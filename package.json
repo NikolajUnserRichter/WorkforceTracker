@@ -1,0 +1,44 @@
+{
+  "name": "workforce-tracker",
+  "version": "1.0.0",
+  "description": "Complete workforce tracking and management web application",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["workforce", "tracking", "management", "resource-planning"],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "date-fns": "^4.1.0",
+    "idb": "^8.0.0",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.3",
+    "lucide-react": "^0.562.0",
+    "papaparse": "^5.4.1",
+    "react": "^19.2.3",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^19.2.3",
+    "react-dropzone": "^14.2.3",
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.20.0",
+    "react-window": "^1.8.10",
+    "recharts": "^3.6.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.3.11",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@types/react-window": "^1.8.8",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "vite": "^7.3.1"
+  }
+}
