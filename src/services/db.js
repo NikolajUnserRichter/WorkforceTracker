@@ -268,6 +268,83 @@ export const employeeDB = {
     return db.count('employees');
   },
 
+  // Get distinct departments
+  async getUniqueDepartments() {
+    const db = await initDB();
+    const tx = db.transaction('employees', 'readonly');
+    const index = tx.store.index('department');
+    let cursor = await index.openKeyCursor(null, 'nextunique');
+
+    const departments = [];
+    while (cursor) {
+      if (cursor.key) departments.push(cursor.key);
+      cursor = await cursor.continue();
+    }
+    return departments;
+  },
+
+  // Calculate aggregation stats efficiently using cursors
+  async getStats() {
+    const db = await initDB();
+    const tx = db.transaction('employees', 'readonly');
+    const store = tx.objectStore('employees');
+    let cursor = await store.openCursor();
+
+    let totalEmployees = 0;
+    let totalCapacity = 0;
+    let availableEmployees = 0;
+
+    // Distributions
+    const departmentCounts = {};
+    const statusCounts = {};
+    const roleCounts = {};
+    let totalFTE = 0;
+    let reductionImpactSum = 0;
+
+    // Use cursor to iterate without keeping all objects in memory
+    while (cursor) {
+      const emp = cursor.value;
+      totalEmployees++;
+
+      // FTE
+      const fte = emp.fte || 100;
+      totalFTE += fte;
+
+      // Reduction
+      const reduction = emp.reductionProgram?.reductionPercentage || 0;
+      reductionImpactSum += reduction;
+      totalCapacity += (fte * (1 - reduction / 100));
+
+      // Availability calculation
+      if (emp.availability === 'available' || emp.availability === 'part-time') {
+        availableEmployees++;
+      }
+
+      // Breakdown counts
+      const dept = emp.department || 'Unknown';
+      departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
+
+      const status = emp.status || 'unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+      const role = emp.role || 'Unknown';
+      roleCounts[role] = (roleCounts[role] || 0) + 1;
+
+      cursor = await cursor.continue();
+    }
+
+    return {
+      totalEmployees,
+      totalCapacity,
+      availableEmployees,
+      departmentCounts,
+      statusCounts,
+      roleCounts,
+      totalFTE,
+      reductionImpactSum
+    };
+  },
+
   // Clear all employees
   async clear() {
     const db = await initDB();
@@ -377,6 +454,23 @@ export const assignmentDB = {
     );
 
     await tx.done;
+  },
+
+  async getStats() {
+    const db = await initDB();
+    const tx = db.transaction('assignments', 'readonly');
+    const store = tx.objectStore('assignments');
+    let cursor = await store.openCursor();
+
+    let totalAllocated = 0;
+
+    while (cursor) {
+      const assign = cursor.value;
+      totalAllocated += (assign.allocationPercentage || 0);
+      cursor = await cursor.continue();
+    }
+
+    return { totalAllocated };
   },
 };
 

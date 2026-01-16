@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
 const WorkforceComparison = () => {
-  const { employees } = useApp();
+  const { } = useApp();
   const [importHistory, setImportHistory] = useState([]);
   const [selectedBaseline, setSelectedBaseline] = useState(null);
   const [selectedCurrent, setSelectedCurrent] = useState(null);
@@ -289,8 +289,8 @@ const WorkforceComparison = () => {
               (comparison.headcountChange < 0
                 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                 : comparison.headcountChange > 0
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600') + ' rounded-lg p-6 border'
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600') + ' rounded-lg p-6 border'
             }>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -323,8 +323,8 @@ const WorkforceComparison = () => {
               (comparison.costChange < 0
                 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                 : comparison.costChange > 0
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600') + ' rounded-lg p-6 border'
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600') + ' rounded-lg p-6 border'
             }>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -434,8 +434,8 @@ const WorkforceComparison = () => {
                           dept.change < 0
                             ? 'inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-medium rounded'
                             : dept.change > 0
-                            ? 'inline-flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-xs font-medium rounded'
-                            : 'inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium rounded'
+                              ? 'inline-flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-xs font-medium rounded'
+                              : 'inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-medium rounded'
                         }>
                           {dept.change > 0 && <TrendingUp className="w-3 h-3" />}
                           {dept.change < 0 && <TrendingDown className="w-3 h-3" />}
@@ -447,8 +447,8 @@ const WorkforceComparison = () => {
                           dept.salaryChange < 0
                             ? 'text-green-600 dark:text-green-400 font-medium'
                             : dept.salaryChange > 0
-                            ? 'text-red-600 dark:text-red-400 font-medium'
-                            : 'text-gray-600 dark:text-gray-400'
+                              ? 'text-red-600 dark:text-red-400 font-medium'
+                              : 'text-gray-600 dark:text-gray-400'
                         }>
                           {dept.salaryChange > 0 ? '+' : ''}${dept.salaryChange.toLocaleString()}
                         </span>

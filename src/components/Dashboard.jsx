@@ -1,9 +1,6 @@
-/**
- * Dashboard Component
- * Main dashboard showing key workforce metrics and overview
- */
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   Users,
   Briefcase,
@@ -11,88 +8,84 @@ import {
   UserCheck,
   Clock,
   Upload,
-  AlertCircle,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
-const Dashboard = ({ onOpenImport }) => {
-  const { employees, projects, reductionPrograms, assignments, loading } = useApp();
+const StatCard = ({ title, value, label, icon: Icon, colorClass, gradientClass, trend }) => (
+  <div className="card p-6 relative overflow-hidden group hover:shadow-lg transition-all duration-300 border-none ring-1 ring-gray-200 dark:ring-gray-800">
+    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradientClass} opacity-10 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110 duration-500`}></div>
 
-  // Calculate metrics
-  const metrics = useMemo(() => {
-    const totalEmployees = employees.length;
-    const activeProjects = projects.filter(p => p.status === 'active').length;
-    const activeReductions = reductionPrograms.filter(p => p.status === 'active').length;
+    <div className="flex items-start justify-between mb-4 relative z-10">
+      <div className={`p-3 rounded-xl ${colorClass} bg-opacity-20 backdrop-blur-sm`}>
+        <Icon className={`w-6 h-6 ${colorClass.replace('bg-', 'text-')}`} />
+      </div>
+      {trend && (
+        <span className={`flex items-center text-xs font-semibold px-2 py-1 rounded-full ${trend > 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+          {trend > 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+          {Math.abs(trend)}%
+        </span>
+      )}
+    </div>
 
-    // Calculate utilization rate
-    const totalCapacity = employees.reduce((sum, emp) => {
-      const fte = emp.fte || 100;
-      const reduction = emp.reductionProgram?.reductionPercentage || 0;
-      return sum + (fte * (1 - reduction / 100));
-    }, 0);
+    <div className="relative z-10">
+      <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-1">
+        {value}
+      </h3>
+      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+        {label}
+      </p>
+    </div>
+  </div>
+);
 
-    const totalAllocated = assignments.reduce((sum, assignment) => {
-      return sum + (assignment.allocationPercentage || 0);
-    }, 0);
+const Dashboard = () => {
+  const { getDashboardMetrics } = useApp();
+  const { setShowImportWizard } = useOutletContext();
+  const navigate = useNavigate();
+  const [metrics, setMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    const utilizationRate = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : 0;
-
-    // Calculate availability
-    const availableEmployees = employees.filter(emp =>
-      emp.availability === 'available' || emp.availability === 'part-time'
-    ).length;
-
-    // Department breakdown
-    const departmentCounts = employees.reduce((acc, emp) => {
-      const dept = emp.department || 'Unknown';
-      acc[dept] = (acc[dept] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Status breakdown
-    const statusCounts = employees.reduce((acc, emp) => {
-      const status = emp.status || 'unknown';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {});
-
-    return {
-      totalEmployees,
-      activeProjects,
-      utilizationRate: Math.round(utilizationRate * 10) / 10,
-      availableEmployees,
-      activeReductions,
-      departmentCounts,
-      statusCounts,
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const data = await getDashboardMetrics();
+        setMetrics(data);
+      } catch (error) {
+        console.error('Failed to load dashboard metrics:', error);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [employees, projects, reductionPrograms, assignments]);
+
+    fetchMetrics();
+  }, [getDashboardMetrics]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-500 font-medium animate-pulse">Analyzing workforce data...</p>
       </div>
     );
   }
 
-  if (employees.length === 0) {
+  if (!metrics || metrics.totalEmployees === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center max-w-lg mx-auto p-8 animate-fade-in">
+        <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-8 shadow-inner transform rotate-12">
           <Upload className="w-12 h-12 text-gray-400" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
           No Data Available
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-          Get started by importing your HR data. Our system can handle 110,000+ employee records efficiently.
+        <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg">
+          Get started by importing your HR data. Our system can handle <span className="font-semibold text-primary-600 dark:text-primary-400">110,000+ records</span> with zero lag.
         </p>
         <button
-          onClick={onOpenImport}
-          className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
+          onClick={() => setShowImportWizard(true)}
+          className="btn-primary flex items-center gap-2 text-lg px-8 py-3 shadow-lg shadow-primary-500/20 hover:shadow-primary-500/40"
         >
           <Upload className="w-5 h-5" />
           Import HR Data
@@ -101,94 +94,80 @@ const Dashboard = ({ onOpenImport }) => {
     );
   }
 
-  const topDepartments = Object.entries(metrics.departmentCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Workforce Dashboard
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+            Overview
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Overview of your workforce metrics and key performance indicators
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-lg">
+            Real-time workforce insights and performance
           </p>
         </div>
-        <button
-          onClick={onOpenImport}
-          className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
-        >
-          <Upload className="w-5 h-5" />
-          Import Data
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate('/employees')}
+            className="px-4 py-2 text-primary-600 dark:text-primary-400 font-medium hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors border border-primary-100 dark:border-primary-900/50"
+          >
+            View All Employees
+          </button>
+          <button
+            onClick={() => setShowImportWizard(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Import Data</span>
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <StatCard
+          value={metrics.totalEmployees.toLocaleString()}
+          label="Total Employees"
+          icon={Users}
+          colorClass="bg-blue-500 text-blue-500"
+          gradientClass="from-blue-500 to-blue-600"
+        />
+        <StatCard
+          value={metrics.activeProjects}
+          label="Active Projects"
+          icon={Briefcase}
+          colorClass="bg-violet-500 text-violet-500"
+          gradientClass="from-violet-500 to-violet-600"
+        />
+        <StatCard
+          value={`${metrics.utilizationRate}%`}
+          label="Utilization Rate"
+          icon={TrendingUp}
+          colorClass="bg-emerald-500 text-emerald-500"
+          gradientClass="from-emerald-500 to-emerald-600"
+          trend={2.5}
+        />
+        <StatCard
+          value={metrics.availableEmployees}
+          label="Available Staff"
+          icon={UserCheck}
+          colorClass="bg-amber-500 text-amber-500"
+          gradientClass="from-amber-500 to-amber-600"
+        />
+        <StatCard
+          value={metrics.activeReductions}
+          label="Reductions"
+          icon={Clock}
+          colorClass="bg-rose-500 text-rose-500"
+          gradientClass="from-rose-500 to-rose-600"
+        />
+      </div>
+
+      {/* Decorative Chart Placeholder */}
+      <div className="card p-8 min-h-[300px] flex items-center justify-center border-dashed border-2 bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="text-center">
+          <div className="inline-flex p-4 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+            <TrendingUp className="w-8 h-8 text-gray-400" />
           </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-            {metrics.totalEmployees.toLocaleString()}
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total Employees
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-              <Briefcase className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-            {metrics.activeProjects}
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Active Projects
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-            {metrics.utilizationRate}%
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Utilization Rate
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center">
-              <UserCheck className="w-6 h-6 text-teal-600 dark:text-teal-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-            {metrics.availableEmployees}
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Available
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-            {metrics.activeReductions}
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Reduction Programs
-          </div>
+          <p className="text-gray-500 font-medium">Detailed analytics charts coming in Phase 2</p>
         </div>
       </div>
     </div>

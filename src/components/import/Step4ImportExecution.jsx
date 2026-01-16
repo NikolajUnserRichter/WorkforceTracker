@@ -4,7 +4,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, AlertTriangle, Download, Home, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle, XCircle, AlertTriangle, Download, Home, Eye, Upload } from 'lucide-react';
 import { useImport } from '../../contexts/ImportContext';
 import { useApp } from '../../contexts/AppContext';
 
@@ -77,10 +78,12 @@ const Step4ImportExecution = () => {
     return phases[phase] || { label: phase, progress: 0 };
   };
 
+  const navigate = useNavigate();
+
   const handleViewEmployees = async () => {
     await refreshEmployees();
     resetImport();
-    setCurrentView('employees');
+    navigate('/employees');
   };
 
   const handleNewImport = () => {
@@ -224,10 +227,10 @@ const Step4ImportExecution = () => {
                   )}
 
                   <span className={`flex-1 text-sm font-medium ${isCurrent
-                      ? 'text-gray-900 dark:text-white'
-                      : isComplete
-                        ? 'text-gray-600 dark:text-gray-400'
-                        : 'text-gray-500 dark:text-gray-500'
+                    ? 'text-gray-900 dark:text-white'
+                    : isComplete
+                      ? 'text-gray-600 dark:text-gray-400'
+                      : 'text-gray-500 dark:text-gray-500'
                     }`}>
                     {phase.label}
                   </span>

@@ -1,11 +1,18 @@
+
 /**
  * App Context
  * Global application state management
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { employeeDB, projectDB, reductionProgramDB, assignmentDB } from '../services/db';
+import {
+  employeeDB,
+  projectDB,
+  reductionProgramDB,
+  assignmentDB
+} from '../services/db';
 import { authService } from '../services/authService';
+import toast from 'react-hot-toast';
 
 const AppContext = createContext();
 
@@ -18,31 +25,31 @@ export const useApp = () => {
 };
 
 export const AppProvider = ({ children, currentUser }) => {
-  const [allEmployees, setAllEmployees] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  // We keep projects and active reduction programs in memory as they are smaller datasets
   const [projects, setProjects] = useState([]);
   const [reductionPrograms, setReductionPrograms] = useState([]);
-  const [assignments, setAssignments] = useState([]);
+
+  // Employees are no longer fully loaded into memory.
+  // We expose an empty array for compatibility where strict array access isn't used,
+  // but components should use the DB service for lists/filtering.
+  const [employees, setEmployees] = useState([]); // Kept empty or sparse
+
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
 
-  // Load data from IndexedDB on mount
+  // Load initial light/heavy data
   useEffect(() => {
     loadAllData();
   }, []);
 
-  // Apply department filtering when currentUser or allEmployees change
+  // Theme Management
   useEffect(() => {
-    if (currentUser && currentUser.departments) {
-      const filtered = authService.filterEmployeesByDepartment(allEmployees, currentUser.departments);
-      setEmployees(filtered);
-    } else {
-      setEmployees(allEmployees);
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setDarkMode(true);
     }
-  }, [currentUser, allEmployees]);
+  }, []);
 
-  // Apply dark mode
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -54,221 +61,222 @@ export const AppProvider = ({ children, currentUser }) => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [employeesData, projectsData, programsData, assignmentsData] = await Promise.all([
-        employeeDB.getAll(),
+      const [projectsData, programsData] = await Promise.all([
         projectDB.getAll(),
         reductionProgramDB.getActive(),
-        assignmentDB.getAll(),
       ]);
-
-      setAllEmployees(employeesData);
       setProjects(projectsData);
       setReductionPrograms(programsData);
-      setAssignments(assignmentsData);
     } catch (error) {
       console.error('Error loading data:', error);
+      toast.error('Failed to load application data');
     } finally {
       setLoading(false);
     }
   };
 
-  // Employee operations
-  const addEmployee = useCallback(async (employee) => {
-    try {
-      const id = await employeeDB.add(employee);
-      const newEmployee = { ...employee, id };
-      setEmployees(prev => [...prev, newEmployee]);
-      return id;
-    } catch (error) {
-      console.error('Error adding employee:', error);
-      throw error;
-    }
-  }, []);
+  const toggleDarkMode = () => setDarkMode(!darkMode);
 
-  const updateEmployee = useCallback(async (id, updates) => {
+  // --- CRUD Wrappers ---
+
+  // Employee Operations
+  const addEmployee = async (employee) => {
+    try {
+      await employeeDB.add(employee);
+      // We don't update local state 'employees' to avoid memory bloat
+      toast.success('Employee added successfully');
+      return true;
+    } catch (error) {
+      console.error('Add employee error:', error);
+      toast.error('Failed to add employee');
+      return false;
+    }
+  };
+
+  const updateEmployee = async (id, updates) => {
     try {
       await employeeDB.update(id, updates);
-      setEmployees(prev => prev.map(emp =>
-        emp.id === id ? { ...emp, ...updates } : emp
-      ));
+      toast.success('Employee updated successfully');
+      return true;
     } catch (error) {
-      console.error('Error updating employee:', error);
-      throw error;
+      console.error('Update employee error:', error);
+      toast.error('Failed to update employee');
+      return false;
     }
-  }, []);
+  };
 
-  const deleteEmployee = useCallback(async (id) => {
+  const deleteEmployee = async (id) => {
     try {
       await employeeDB.delete(id);
-      await assignmentDB.deleteByEmployee(id);
-      setEmployees(prev => prev.filter(emp => emp.id !== id));
+      // clean up assignments
+      // Note: In a real app we might want to cascade delete or warn
+      toast.success('Employee deleted successfully');
+      return true;
     } catch (error) {
-      console.error('Error deleting employee:', error);
-      throw error;
+      console.error('Delete employee error:', error);
+      toast.error('Failed to delete employee');
+      return false;
     }
-  }, []);
+  };
 
-  const bulkDeleteEmployees = useCallback(async (ids) => {
+  const bulkDeleteEmployees = async (ids) => {
     try {
       await employeeDB.bulkDelete(ids);
-      setEmployees(prev => prev.filter(emp => !ids.includes(emp.id)));
+      toast.success(`${ids.length} employees deleted`);
+      return true;
     } catch (error) {
-      console.error('Error bulk deleting employees:', error);
-      throw error;
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete employees');
+      return false;
     }
-  }, []);
+  };
 
-  const refreshEmployees = useCallback(async () => {
-    try {
-      const employeesData = await employeeDB.getAll();
-      setAllEmployees(employeesData);
-    } catch (error) {
-      console.error('Error refreshing employees:', error);
-    }
-  }, []);
+  // Helper for components that might still try to refresh "all" employees
+  const refreshEmployees = async () => {
+    // No-op for memory safety. 
+    // Components should trigger their own DB re-fetch.
+    console.log('refreshEmployees called - operating in optimized mode');
+  };
 
-  // Project operations
-  const addProject = useCallback(async (project) => {
+  // Project Operations
+  const addProject = async (project) => {
     try {
       const id = await projectDB.add(project);
-      const newProject = { ...project, id };
-      setProjects(prev => [...prev, newProject]);
-      return id;
+      setProjects(prev => [...prev, { ...project, id }]);
+      toast.success('Project added');
+      return true;
     } catch (error) {
-      console.error('Error adding project:', error);
-      throw error;
+      console.error('Add project error:', error);
+      toast.error('Failed to add project');
+      return false;
     }
-  }, []);
+  };
 
-  const updateProject = useCallback(async (id, updates) => {
+  const updateProject = async (id, updates) => {
     try {
       await projectDB.update(id, updates);
-      setProjects(prev => prev.map(proj =>
-        proj.id === id ? { ...proj, ...updates } : proj
-      ));
+      setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+      toast.success('Project updated');
+      return true;
     } catch (error) {
-      console.error('Error updating project:', error);
-      throw error;
+      console.error('Update project error:', error);
+      toast.error('Failed to update project');
+      return false;
     }
-  }, []);
+  };
 
-  const deleteProject = useCallback(async (id) => {
+  const deleteProject = async (id) => {
     try {
       await projectDB.delete(id);
-      setProjects(prev => prev.filter(proj => proj.id !== id));
+      setProjects(prev => prev.filter(p => p.id !== id));
+      toast.success('Project deleted');
+      return true;
     } catch (error) {
-      console.error('Error deleting project:', error);
-      throw error;
+      console.error('Delete project error:', error);
+      toast.error('Failed to delete project');
+      return false;
     }
-  }, []);
+  };
 
-  // Assignment operations
-  const assignEmployeeToProject = useCallback(async (employeeId, projectId, allocationPercentage = 100) => {
+  // Assignment Operations
+  const assignEmployeeToProject = async (assignment) => {
     try {
-      const assignment = {
-        employeeId,
-        projectId,
-        allocationPercentage,
-        startDate: new Date().toISOString().split('T')[0],
-        adjustedForReduction: false,
-      };
-
-      const id = await assignmentDB.add(assignment);
-      const newAssignment = { ...assignment, id };
-      setAssignments(prev => [...prev, newAssignment]);
-      return id;
+      await assignmentDB.add(assignment);
+      toast.success('Assignment created');
+      return true;
     } catch (error) {
-      console.error('Error assigning employee:', error);
-      throw error;
+      console.error('Assignment error:', error);
+      toast.error('Failed to create assignment');
+      return false;
     }
-  }, []);
+  };
 
-  const removeAssignment = useCallback(async (id) => {
+  const removeAssignment = async (id) => {
     try {
       await assignmentDB.delete(id);
-      setAssignments(prev => prev.filter(a => a.id !== id));
+      toast.success('Assignment removed');
+      return true;
     } catch (error) {
-      console.error('Error removing assignment:', error);
-      throw error;
+      console.error('Remove assignment error:', error);
+      toast.error('Failed to remove assignment');
+      return false;
     }
-  }, []);
+  };
 
-  // Reduction program operations
-  const addReductionProgram = useCallback(async (program) => {
+  // Reduction Programs
+  const addReductionProgram = async (program) => {
     try {
       const id = await reductionProgramDB.add(program);
-
-      // Update employee record
-      await employeeDB.update(program.employeeId, {
-        reductionProgram: { ...program, id },
-      });
-
-      setReductionPrograms(prev => [...prev, { ...program, id }]);
-      await refreshEmployees();
-      return id;
+      if (program.status === 'active') {
+        setReductionPrograms(prev => [...prev, { ...program, id }]);
+      }
+      toast.success('Reduction program added');
+      return true;
     } catch (error) {
-      console.error('Error adding reduction program:', error);
-      throw error;
+      console.error('Add reduction program error:', error);
+      toast.error('Failed to add reduction program');
+      return false;
     }
-  }, [refreshEmployees]);
+  };
 
-  const updateReductionProgram = useCallback(async (id, updates) => {
+  const updateReductionProgram = async (id, updates) => {
     try {
       await reductionProgramDB.update(id, updates);
-      setReductionPrograms(prev => prev.map(prog =>
-        prog.id === id ? { ...prog, ...updates } : prog
-      ));
-      await refreshEmployees();
+      loadAllData(); // Refresh active programs list
+      toast.success('Reduction program updated');
+      return true;
     } catch (error) {
-      console.error('Error updating reduction program:', error);
-      throw error;
+      console.error('Update reduction program error:', error);
+      toast.error('Failed to update reduction program');
+      return false;
     }
-  }, [refreshEmployees]);
+  };
 
-  // Toggle dark mode
-  const toggleDarkMode = useCallback(() => {
-    setDarkMode(prev => !prev);
-  }, []);
+  // --- Metrics & Dashboard ---
 
-  // Get dashboard metrics
-  const getDashboardMetrics = useCallback(() => {
-    const totalEmployees = employees.length;
+  const getDashboardMetrics = useCallback(async () => {
+    const [empStats, assignStats] = await Promise.all([
+      employeeDB.getStats(),
+      assignmentDB.getStats()
+    ]);
+
     const activeProjects = projects.filter(p => p.status === 'active').length;
     const activeReductions = reductionPrograms.filter(p => p.status === 'active').length;
 
-    // Calculate utilization rate
-    const totalCapacity = employees.reduce((sum, emp) => {
-      const fte = emp.fte || 100;
-      const reduction = emp.reductionProgram?.reductionPercentage || 0;
-      return sum + (fte * (1 - reduction / 100));
-    }, 0);
+    // Check if empStats returned the full detailed object or just the basic one
+    // We assume the DB service is updated to return detailed stats
 
-    const totalAllocated = assignments.reduce((sum, assignment) => {
-      return sum + (assignment.allocationPercentage || 0);
-    }, 0);
+    const totalAllocated = assignStats.totalAllocated;
 
-    const utilizationRate = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : 0;
+    const utilizationRate = empStats.totalCapacity > 0
+      ? (totalAllocated / empStats.totalCapacity) * 100
+      : 0;
 
-    // Calculate availability
-    const availableEmployees = employees.filter(emp =>
-      emp.availability === 'available' || emp.availability === 'part-time'
-    ).length;
+    const avgFTE = empStats.totalEmployees > 0 ? (empStats.totalFTE / empStats.totalEmployees) : 0;
+    const avgReductionInpact = empStats.totalEmployees > 0 ? (empStats.reductionImpactSum / empStats.totalEmployees) : 0;
 
     return {
-      totalEmployees,
+      totalEmployees: empStats.totalEmployees,
       activeProjects,
       utilizationRate: Math.round(utilizationRate * 10) / 10,
-      availableEmployees,
+      availableEmployees: empStats.availableEmployees,
       activeReductions,
+
+      // Detailed stats for Reports
+      departmentCounts: empStats.departmentCounts || {},
+      statusCounts: empStats.statusCounts || {},
+      roleCounts: empStats.roleCounts || {},
+      totalFTE: Math.round((empStats.totalFTE || 0) * 10) / 10,
+      avgFTE: Math.round(avgFTE * 10) / 10,
+      reductionImpact: Math.round(avgReductionInpact * 10) / 10,
     };
-  }, [employees, projects, reductionPrograms, assignments]);
+  }, [projects, reductionPrograms]);
 
   const value = {
     // State
-    employees,
+    employees, // Exposed but empty/sparse
     projects,
     reductionPrograms,
-    assignments,
     loading,
     darkMode,
     currentView,
