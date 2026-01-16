@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, LayoutDashboard, Users, Briefcase, Upload, FileText, LogOut, UserCog } from 'lucide-react';
+import { Moon, Sun, LayoutDashboard, Users, Briefcase, Upload, FileText, LogOut, UserCog, TrendingDown } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { ImportProvider } from './contexts/ImportContext';
@@ -14,6 +14,7 @@ import Reports from './components/Reports';
 import ImportWizard from './components/import/ImportWizard';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
+import WorkforceComparison from './components/WorkforceComparison';
 import { authService } from './services/authService';
 import toast from 'react-hot-toast';
 
@@ -30,7 +31,7 @@ const AppContent = ({ currentUser, onLogout }) => {
   const navigation = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'employees', label: 'Employees', icon: Users },
-    { id: 'projects', label: 'Projects', icon: Briefcase },
+    { id: 'comparison', label: 'Cost Tracking', icon: TrendingDown },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 
@@ -161,6 +162,9 @@ const AppContent = ({ currentUser, onLogout }) => {
           <Dashboard onOpenImport={() => setShowImportWizard(true)} />
         )}
         {currentView === 'employees' && <EmployeeList />}
+        {currentView === 'comparison' && <WorkforceComparison />}
+        {currentView === 'reports' && <Reports />}
+        {currentView === 'users' && currentUser.role === 'admin' && <UserManagement />}
         {currentView === 'projects' && (
           <div className="text-center py-16">
             <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -172,8 +176,6 @@ const AppContent = ({ currentUser, onLogout }) => {
             </p>
           </div>
         )}
-        {currentView === 'reports' && <Reports />}
-        {currentView === 'users' && currentUser.role === 'admin' && <UserManagement />}
       </main>
 
       {/* Import Wizard Modal */}

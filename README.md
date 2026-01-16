@@ -1,6 +1,6 @@
-# Workforce Tracker - High-Performance HR Management System
+# Workforce Tracker - Workforce Reduction & Cost Savings Management
 
-A complete workforce tracking and management web application with advanced HR data import capabilities designed to handle 110,000+ employee records efficiently.
+A complete workforce reduction tracking and cost analysis application designed to monitor and compare workforce changes over time, supporting cost-saving initiatives with 110,000+ employee record capacity.
 
 ## Features
 
@@ -75,12 +75,25 @@ Interactive dashboard showing key workforce metrics:
 - Reduction program indicators
 - Responsive table layout
 
-### 4. Personal Reduction Programs
+### 4. Workforce Reduction Tracking & Cost Analysis
 
-- Track reduced working hours
-- Monitor impact on capacity
-- Program status indicators
-- Historical tracking
+**Core Purpose: Track workforce reduction programs for cost savings**
+
+- **Version Comparison**: Compare workforce data between different upload versions
+- **Headcount Tracking**: Monitor employee count changes over time by department
+- **Cost Analysis**: Track total salary costs and cost savings achieved
+- **Department-Level Insights**: Detailed breakdown of headcount and cost changes per department
+- **Trend Visualization**: Clear indicators showing cost reductions vs increases
+- **Export Analysis**: Export detailed comparison reports to Excel
+- **Savings Metrics**: Calculate cost savings achieved through workforce reduction
+
+Key Features:
+- Select any two import versions (baseline vs current) for comparison
+- Automatic calculation of headcount and cost deltas
+- Color-coded indicators (green for savings, red for increases)
+- Department-by-department breakdown showing exactly where changes occurred
+- Time period tracking between versions
+- Professional Excel export for management reporting
 
 ### 5. Reports & Analytics
 
@@ -105,9 +118,20 @@ Professional report generation with comprehensive data export:
 - FTE calculations
 - Reduction program impact analysis
 
-### 6. Technical Features
+### 6. Department-Based Security & Access Control
+
+- **Row-Level Security**: Users only see employees from their assigned departments
+- **Multi-Department Access**: Assign users to one or more specific departments
+- **Admin Access**: Admin role with full access to all departments
+- **User Management**: Comprehensive admin interface to manage users and permissions
+- **Session Management**: Secure login/logout with IndexedDB-based sessions
+- **Access Filtering**: All views automatically filtered by user's department access
+
+### 7. Technical Features
 
 - **IndexedDB Storage**: Efficient client-side database for 110,000+ records
+- **Version Snapshots**: Each import creates a timestamped snapshot with cost data
+- **Cost Tracking**: Automatic salary/cost calculation and comparison
 - **Web Workers**: Background processing for non-blocking imports
 - **Chunked Processing**: 2,000 rows per chunk for optimal performance
 - **Virtual Scrolling**: Smooth rendering of large datasets
@@ -231,15 +255,32 @@ The system auto-detects common column headers in multiple languages including:
 - Safari 14+
 - Edge 90+
 
-## Features Coming Soon
+## Use Cases
 
-- Project management and assignment
-- Capacity planning view
-- Advanced reporting and analytics
-- Export to PDF/Excel
-- Bulk employee operations
-- Smart matching for project assignments
-- Timeline/Gantt chart view
+### Workforce Reduction Programs
+1. **Initial Baseline**: Import current workforce data to establish baseline
+2. **Track Changes**: Import updated data after each reduction phase
+3. **Compare Versions**: Select baseline and current versions to see:
+   - Total headcount reduction
+   - Cost savings achieved
+   - Department-by-department impact
+4. **Report to Management**: Export comparison analysis to Excel
+5. **Monitor Progress**: Track multiple versions over time to measure program success
+
+### Cost Savings Initiatives
+- **Before/After Analysis**: Compare pre and post-reduction workforce costs
+- **Department Targeting**: Identify which departments achieved the most savings
+- **Trend Analysis**: Track reduction progress across multiple time periods
+- **Justification Reports**: Generate detailed reports for stakeholder communication
+
+## Default Login Credentials
+
+On first launch, the system creates a default admin account:
+- **Username**: `admin`
+- **Password**: `admin123`
+- **Access**: All departments
+
+Use the User Management screen (admin-only) to create additional users with department-specific access.
 
 ## Contributing
 
@@ -255,4 +296,4 @@ For questions or issues, please create an issue in the project repository.
 
 ---
 
-**Built with performance in mind** - Designed to handle enterprise-scale HR datasets with 110,000+ employees efficiently.
+**Built for workforce reduction tracking** - Designed to monitor cost savings and headcount changes across workforce reduction programs, handling enterprise-scale datasets with 110,000+ employees efficiently.

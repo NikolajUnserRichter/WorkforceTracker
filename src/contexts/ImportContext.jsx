@@ -192,7 +192,27 @@ export const ImportProvider = ({ children }) => {
         }));
       });
 
-      // Save import history
+      // Calculate cost and department breakdown for comparison tracking
+      const departmentBreakdown = {};
+      let totalSalary = 0;
+
+      results.employees.forEach(emp => {
+        const dept = emp.department || 'Unknown';
+        const salary = emp.baseSalary || emp.hourlyRate * 2080 || 0; // Estimate annual salary
+
+        if (!departmentBreakdown[dept]) {
+          departmentBreakdown[dept] = {
+            count: 0,
+            totalSalary: 0,
+          };
+        }
+
+        departmentBreakdown[dept].count += 1;
+        departmentBreakdown[dept].totalSalary += salary;
+        totalSalary += salary;
+      });
+
+      // Save import history with cost tracking
       await importHistoryDB.add({
         fileName: fileInfo.name,
         fileSize: fileInfo.size,
@@ -204,6 +224,8 @@ export const ImportProvider = ({ children }) => {
         processingTime: duration,
         timestamp: new Date().toISOString(),
         errorLog: results.errors,
+        totalSalary: Math.round(totalSalary),
+        departmentBreakdown,
       });
 
       setImportResults({
