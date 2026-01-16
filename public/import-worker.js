@@ -399,7 +399,8 @@ async function processImport(data) {
     errors: [],
   };
 
-  const requiredFields = ['employeeId', 'name'];
+  // Only employeeId is required - name is optional
+  const requiredFields = ['employeeId'];
   const seenIds = new Set();
 
   // Process in chunks for better performance

@@ -99,29 +99,51 @@ export const employeeDB = {
     return db.add('employees', employee);
   },
 
-  // Bulk add employees (chunked for performance)
+  // Bulk add or update employees (upsert - chunked for performance)
+  // Uses employeeId as the unique identifier to check for existing records
   async bulkAdd(employees, onProgress) {
     const db = await initDB();
-    const tx = db.transaction('employees', 'readwrite');
-    const store = tx.objectStore('employees');
-
-    const chunkSize = 1000;
+    const chunkSize = 500;
     let processed = 0;
+    let inserted = 0;
+    let updated = 0;
 
     for (let i = 0; i < employees.length; i += chunkSize) {
       const chunk = employees.slice(i, i + chunkSize);
 
-      await Promise.all(
-        chunk.map(employee => store.add(employee))
-      );
+      // Process each chunk in a transaction
+      const tx = db.transaction('employees', 'readwrite');
+      const store = tx.objectStore('employees');
+      const index = store.index('employeeId');
 
+      for (const employee of chunk) {
+        try {
+          // Check if employee with this employeeId already exists
+          const existing = await index.get(employee.employeeId);
+
+          if (existing) {
+            // Update existing record - preserve the internal id
+            await store.put({ ...employee, id: existing.id });
+            updated++;
+          } else {
+            // Insert new record
+            await store.add(employee);
+            inserted++;
+          }
+        } catch (error) {
+          console.error('Error processing employee:', employee.employeeId, error);
+        }
+      }
+
+      await tx.done;
       processed += chunk.length;
+
       if (onProgress) {
         onProgress(processed, employees.length);
       }
     }
 
-    await tx.done;
+    console.log('Bulk import complete: ' + inserted + ' inserted, ' + updated + ' updated');
     return processed;
   },
 

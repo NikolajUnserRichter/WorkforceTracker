@@ -134,8 +134,8 @@ export const ImportProvider = ({ children }) => {
     }
   }, [initWorker]);
 
-  // Validate data
-  const validateData = useCallback((mapping, requiredFields = ['employeeId', 'name']) => {
+  // Validate data - only employeeId is required
+  const validateData = useCallback((mapping, requiredFields = ['employeeId']) => {
     setIsProcessing(true);
     const worker = initWorker();
 

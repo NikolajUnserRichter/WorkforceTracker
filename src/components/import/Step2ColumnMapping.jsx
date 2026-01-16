@@ -9,48 +9,55 @@ import { useImport } from '../../contexts/ImportContext';
 
 // Target field definitions with descriptions
 const TARGET_FIELDS = [
-  // Required fields
-  { key: 'employeeId', label: 'Employee ID', required: true, type: 'text', category: 'Basic' },
-  { key: 'name', label: 'Full Name', required: true, type: 'text', category: 'Basic' },
+  // Required fields - only employeeId is required
+  { key: 'employeeId', label: 'Employee ID (Person Number)', required: true, type: 'text', category: 'Basic' },
 
   // Basic Information
+  { key: 'name', label: 'Full Name', required: false, type: 'text', category: 'Basic' },
   { key: 'firstName', label: 'First Name', required: false, type: 'text', category: 'Basic' },
   { key: 'lastName', label: 'Last Name', required: false, type: 'text', category: 'Basic' },
   { key: 'email', label: 'Email', required: false, type: 'text', category: 'Basic' },
   { key: 'birthdate', label: 'Birth Date', required: false, type: 'date', category: 'Basic' },
+  { key: 'age', label: 'Age', required: false, type: 'number', category: 'Basic' },
   { key: 'gender', label: 'Gender', required: false, type: 'text', category: 'Basic' },
   { key: 'nationality', label: 'Nationality', required: false, type: 'text', category: 'Basic' },
 
   // Employment Information
-  { key: 'role', label: 'Job Title/Role', required: false, type: 'text', category: 'Employment' },
-  { key: 'jobTitle', label: 'Job Title (Alt)', required: false, type: 'text', category: 'Employment' },
-  { key: 'status', label: 'Employment Status', required: false, type: 'text', category: 'Employment' },
-  { key: 'employmentType', label: 'Employment Type', required: false, type: 'text', category: 'Employment' },
-  { key: 'startDate', label: 'Start Date', required: false, type: 'date', category: 'Employment' },
-  { key: 'endDate', label: 'End Date', required: false, type: 'date', category: 'Employment' },
-  { key: 'fte', label: 'FTE %', required: false, type: 'percentage', category: 'Employment' },
+  { key: 'role', label: 'Job Name/Role', required: false, type: 'text', category: 'Employment' },
+  { key: 'jobTitle', label: 'Title', required: false, type: 'text', category: 'Employment' },
+  { key: 'status', label: 'Person Type/Status', required: false, type: 'text', category: 'Employment' },
+  { key: 'employmentType', label: 'Worker Category', required: false, type: 'text', category: 'Employment' },
+  { key: 'regularTemporary', label: 'Regular/Temporary', required: false, type: 'text', category: 'Employment' },
+  { key: 'startDate', label: 'Seniority Date', required: false, type: 'date', category: 'Employment' },
+  { key: 'endDate', label: 'Termination Date', required: false, type: 'date', category: 'Employment' },
+  { key: 'exitDate', label: 'Exit Date', required: false, type: 'date', category: 'Employment' },
+  { key: 'contractEndDate', label: 'Contract End Date', required: false, type: 'date', category: 'Employment' },
+  { key: 'fte', label: 'Full-Time Equivalent', required: false, type: 'number', category: 'Employment' },
+  { key: 'headCount', label: 'Head Count', required: false, type: 'number', category: 'Employment' },
 
   // Organizational
-  { key: 'department', label: 'Department', required: false, type: 'text', category: 'Organizational' },
-  { key: 'division', label: 'Division', required: false, type: 'text', category: 'Organizational' },
-  { key: 'company', label: 'Company', required: false, type: 'text', category: 'Organizational' },
-  { key: 'country', label: 'Country', required: false, type: 'text', category: 'Organizational' },
+  { key: 'department', label: 'Department Name', required: false, type: 'text', category: 'Organizational' },
+  { key: 'departmentId', label: 'Department ID', required: false, type: 'text', category: 'Organizational' },
+  { key: 'division', label: 'Segment/Division', required: false, type: 'text', category: 'Organizational' },
+  { key: 'company', label: 'Legal Employer Name', required: false, type: 'text', category: 'Organizational' },
+  { key: 'country', label: 'Legislation/Country', required: false, type: 'text', category: 'Organizational' },
   { key: 'plant', label: 'Plant/Location', required: false, type: 'text', category: 'Organizational' },
+  { key: 'city', label: 'City', required: false, type: 'text', category: 'Organizational' },
   { key: 'costCenter', label: 'Cost Center', required: false, type: 'text', category: 'Organizational' },
-  { key: 'managementLevel', label: 'Management Level', required: false, type: 'text', category: 'Organizational' },
-  { key: 'reportingManager', label: 'Reporting Manager', required: false, type: 'text', category: 'Organizational' },
+  { key: 'managementLevel', label: 'Assignment Category', required: false, type: 'text', category: 'Organizational' },
+  { key: 'positionCode', label: 'Position Code', required: false, type: 'text', category: 'Organizational' },
 
   // Compensation
   { key: 'hourlyRate', label: 'Hourly Rate', required: false, type: 'number', category: 'Compensation' },
   { key: 'baseSalary', label: 'Base Salary', required: false, type: 'number', category: 'Compensation' },
-  { key: 'payScale', label: 'Pay Scale', required: false, type: 'text', category: 'Compensation' },
+  { key: 'payScale', label: 'Grade Name/Pay Scale', required: false, type: 'text', category: 'Compensation' },
 ];
 
 // Common column name patterns for auto-detection
 const COLUMN_PATTERNS = {
   employeeId: [
-    'employee id', 'employeeid', 'emp id', 'empid', 'personnel number',
-    'personnel no', 'pernr', 'mitarbeiter id', 'mitarbeiternummer'
+    'person number', 'personnumber', 'employee id', 'employeeid', 'emp id', 'empid',
+    'personnel number', 'personnel no', 'pernr', 'mitarbeiter id', 'mitarbeiternummer'
   ],
   name: [
     'name', 'full name', 'fullname', 'employee name', 'emp name',
@@ -59,11 +66,22 @@ const COLUMN_PATTERNS = {
   firstName: ['first name', 'firstname', 'given name', 'forename', 'vorname', 'prenom'],
   lastName: ['last name', 'lastname', 'surname', 'family name', 'nachname', 'nom'],
   email: ['email', 'e-mail', 'email address', 'mail', 'e-mail-adresse'],
-  role: ['job title', 'title', 'position', 'role', 'job', 'stelle', 'funktion', 'cargo', 'puesto'],
-  department: ['department', 'dept', 'abteilung', 'departamento', 'departement'],
-  status: ['status', 'employment status', 'emp status', 'state', 'staat', 'estado'],
-  startDate: ['start date', 'hire date', 'join date', 'eintrittsdatum', 'fecha inicio'],
-  fte: ['fte', 'full time equivalent', 'working time', 'arbeitszeit', 'tiempo trabajo'],
+  role: ['job name', 'jobname', 'job title', 'title', 'position', 'role', 'job', 'stelle', 'funktion', 'cargo', 'puesto'],
+  jobTitle: ['title', 'jobtitle'],
+  department: ['department name', 'departmentname', 'department', 'dept', 'abteilung', 'departamento', 'departement'],
+  status: ['system person type', 'status', 'employment status', 'emp status', 'state', 'staat', 'estado'],
+  employmentType: ['worker category', 'workercategory', 'regular/temporary', 'employment type'],
+  startDate: ['seniority date', 'start date', 'hire date', 'join date', 'eintrittsdatum', 'fecha inicio'],
+  endDate: ['termination date', 'exit date', 'end date', 'contract end date'],
+  fte: ['full-time equivalent', 'full time equivalent', 'fte', 'working time', 'arbeitszeit', 'tiempo trabajo'],
+  company: ['legal employer name', 'company', 'firma', 'unternehmen'],
+  plant: ['plant 2 (description)', 'plant 1 (description)', 'plant', 'location', 'standort'],
+  city: ['city', 'stadt', 'ciudad'],
+  costCenter: ['cost center', 'costcenter', 'kostenstelle'],
+  division: ['segment', 'division', 'bereich'],
+  birthdate: ['person date of birth', 'date of birth', 'birthdate', 'geburtsdatum'],
+  payScale: ['grade name', 'gradename', 'pay scale', 'pay grade', 'gehaltsstufe'],
+  managementLevel: ['assignment category', 'management level', 'führungsebene'],
 };
 
 const Step2ColumnMapping = () => {
