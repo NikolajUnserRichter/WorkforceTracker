@@ -82,7 +82,30 @@ Interactive dashboard showing key workforce metrics:
 - Program status indicators
 - Historical tracking
 
-### 5. Technical Features
+### 5. Reports & Analytics
+
+Professional report generation with comprehensive data export:
+
+#### PDF Reports
+- **Management Summary**: Executive overview with key metrics, department breakdown, employment status distribution, and top roles analysis with professional formatting
+- **Detailed Employee List**: Complete employee roster in formatted table layout with all key fields
+- **Professional Design**: Branded headers, automated pagination, footers with copyright
+
+#### Excel Export
+- **Multi-Sheet Workbook**: Summary metrics and detailed employee data
+- **Analysis-Ready**: Formatted for pivot tables and further analysis
+- **Comprehensive Data**: All employee fields exported with proper data types
+
+#### Report Features
+- Client-side generation (no server required)
+- Timestamped filenames
+- Real-time metrics calculation
+- Department and status breakdowns
+- Utilization rate analysis
+- FTE calculations
+- Reduction program impact analysis
+
+### 6. Technical Features
 
 - **IndexedDB Storage**: Efficient client-side database for 110,000+ records
 - **Web Workers**: Background processing for non-blocking imports
@@ -100,6 +123,10 @@ Interactive dashboard showing key workforce metrics:
 - **File Parsing**:
   - SheetJS (XLSX) for Excel files
   - PapaParse for CSV files
+- **Report Generation**:
+  - jsPDF for PDF creation
+  - jspdf-autotable for formatted PDF tables
+  - SheetJS (XLSX) for Excel export
 - **Background Processing**: Web Workers
 - **Charts**: Chart.js & Recharts
 - **Icons**: Lucide React
