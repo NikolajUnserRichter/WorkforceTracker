@@ -4,12 +4,13 @@
  */
 
 import React, { useState } from 'react';
-import { Moon, Sun, LayoutDashboard, Users, Briefcase, Upload } from 'lucide-react';
+import { Moon, Sun, LayoutDashboard, Users, Briefcase, Upload, FileText } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { ImportProvider } from './contexts/ImportContext';
 import Dashboard from './components/Dashboard';
 import EmployeeList from './components/EmployeeList';
+import Reports from './components/Reports';
 import ImportWizard from './components/import/ImportWizard';
 
 const AppContent = () => {
@@ -20,6 +21,7 @@ const AppContent = () => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'employees', label: 'Employees', icon: Users },
     { id: 'projects', label: 'Projects', icon: Briefcase },
+    { id: 'reports', label: 'Reports', icon: FileText },
   ];
 
   return (
@@ -136,6 +138,7 @@ const AppContent = () => {
             </p>
           </div>
         )}
+        {currentView === 'reports' && <Reports />}
       </main>
 
       {/* Import Wizard Modal */}
