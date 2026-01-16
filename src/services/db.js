@@ -107,18 +107,22 @@ export const employeeDB = {
     let processed = 0;
 
     // Deduplicate incoming data - keep last occurrence of each employeeId
+    // Also filter out any employees without a valid employeeId
     const deduplicatedMap = new Map();
     employees.forEach(emp => {
-      if (emp.employeeId) {
-        deduplicatedMap.set(emp.employeeId, emp);
+      if (emp.employeeId && emp.employeeId.toString().trim() !== '') {
+        deduplicatedMap.set(emp.employeeId.toString().trim(), emp);
       }
     });
     const uniqueEmployees = Array.from(deduplicatedMap.values());
 
+    console.log(`bulkAdd: Starting import of ${uniqueEmployees.length} unique employees (from ${employees.length} total)`);
+
     // Clear all existing employees first (this is a full snapshot replacement)
-    const clearTx = db.transaction('employees', 'readwrite');
-    await clearTx.objectStore('employees').clear();
-    await clearTx.done;
+    // Use a single transaction to ensure atomicity
+    console.log('bulkAdd: Clearing existing employees...');
+    await db.clear('employees');
+    console.log('bulkAdd: Clear complete, starting inserts...');
 
     // Insert all new employees
     for (let i = 0; i < uniqueEmployees.length; i += chunkSize) {
@@ -127,20 +131,28 @@ export const employeeDB = {
       const tx = db.transaction('employees', 'readwrite');
       const store = tx.objectStore('employees');
 
-      const promises = chunk.map((employee) => store.add(employee));
+      // Add each employee, ensuring employeeId is a trimmed string
+      const promises = chunk.map((employee) => {
+        const cleanEmployee = {
+          ...employee,
+          employeeId: employee.employeeId.toString().trim(),
+        };
+        return store.add(cleanEmployee);
+      });
 
       await Promise.all(promises);
       await tx.done;
 
       processed += chunk.length;
+      console.log(`bulkAdd: Processed ${processed}/${uniqueEmployees.length} employees`);
 
       if (onProgress) {
         onProgress(processed, uniqueEmployees.length);
       }
     }
 
-    console.log('Full snapshot import: ' + uniqueEmployees.length + ' employees imported');
-    return employees.length;
+    console.log('Full snapshot import complete: ' + uniqueEmployees.length + ' employees imported');
+    return uniqueEmployees.length;
   },
 
   // Get employee by ID
