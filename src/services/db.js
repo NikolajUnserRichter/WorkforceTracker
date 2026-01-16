@@ -99,24 +99,12 @@ export const employeeDB = {
     return db.add('employees', employee);
   },
 
-  // Bulk add or update employees (upsert - chunked for performance)
-  // Uses employeeId as the unique identifier to check for existing records
+  // Replace all employees with new data (full snapshot import)
+  // Each import is a complete snapshot - old data is cleared and replaced
   async bulkAdd(employees, onProgress) {
     const db = await initDB();
     const chunkSize = 500;
     let processed = 0;
-    let inserted = 0;
-    let updated = 0;
-    let skipped = 0;
-
-    // First, get all existing employee IDs for efficient lookup
-    const existingEmployees = await db.getAll('employees');
-    const existingMap = new Map();
-    existingEmployees.forEach(emp => {
-      if (emp.employeeId) {
-        existingMap.set(emp.employeeId, emp.id);
-      }
-    });
 
     // Deduplicate incoming data - keep last occurrence of each employeeId
     const deduplicatedMap = new Map();
@@ -126,28 +114,20 @@ export const employeeDB = {
       }
     });
     const uniqueEmployees = Array.from(deduplicatedMap.values());
-    skipped = employees.length - uniqueEmployees.length;
 
+    // Clear all existing employees first (this is a full snapshot replacement)
+    const clearTx = db.transaction('employees', 'readwrite');
+    await clearTx.objectStore('employees').clear();
+    await clearTx.done;
+
+    // Insert all new employees
     for (let i = 0; i < uniqueEmployees.length; i += chunkSize) {
       const chunk = uniqueEmployees.slice(i, i + chunkSize);
 
-      // Process each chunk in a transaction
       const tx = db.transaction('employees', 'readwrite');
       const store = tx.objectStore('employees');
 
-      const promises = chunk.map((employee) => {
-        const existingId = existingMap.get(employee.employeeId);
-
-        if (existingId) {
-          // Update existing record - preserve the internal id
-          updated++;
-          return store.put({ ...employee, id: existingId });
-        } else {
-          // Insert new record - no id means auto-generate
-          inserted++;
-          return store.add(employee);
-        }
-      });
+      const promises = chunk.map((employee) => store.add(employee));
 
       await Promise.all(promises);
       await tx.done;
@@ -159,8 +139,8 @@ export const employeeDB = {
       }
     }
 
-    console.log('Bulk import: ' + inserted + ' inserted, ' + updated + ' updated, ' + skipped + ' duplicates skipped');
-    return employees.length; // Return original count for progress display
+    console.log('Full snapshot import: ' + uniqueEmployees.length + ' employees imported');
+    return employees.length;
   },
 
   // Get employee by ID
