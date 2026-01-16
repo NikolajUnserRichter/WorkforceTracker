@@ -99,13 +99,38 @@ const Step2ColumnMapping = () => {
 
   const autoMapColumns = () => {
     const mapping = {};
+    const usedHeaders = new Set();
 
+    // First pass: exact matches (highest priority)
     headers.forEach(header => {
       const normalizedHeader = header.toLowerCase().trim();
 
       for (const [targetKey, patterns] of Object.entries(COLUMN_PATTERNS)) {
-        if (patterns.some(pattern => normalizedHeader.includes(pattern))) {
+        if (mapping[targetKey]) continue; // Already mapped
+
+        // Check for exact match first
+        if (patterns.some(pattern => normalizedHeader === pattern)) {
           mapping[targetKey] = header;
+          usedHeaders.add(header);
+          break;
+        }
+      }
+    });
+
+    // Second pass: contains matches (lower priority), skip already used headers
+    headers.forEach(header => {
+      if (usedHeaders.has(header)) return;
+
+      const normalizedHeader = header.toLowerCase().trim();
+
+      for (const [targetKey, patterns] of Object.entries(COLUMN_PATTERNS)) {
+        if (mapping[targetKey]) continue; // Already mapped
+
+        // Check for contains match, but prioritize longer patterns
+        const sortedPatterns = [...patterns].sort((a, b) => b.length - a.length);
+        if (sortedPatterns.some(pattern => normalizedHeader.includes(pattern))) {
+          mapping[targetKey] = header;
+          usedHeaders.add(header);
           break;
         }
       }
