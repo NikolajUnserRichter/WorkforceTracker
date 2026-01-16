@@ -37,6 +37,7 @@ export const ImportProvider = ({ children }) => {
 
   const workerRef = useRef(null);
   const startTimeRef = useRef(null);
+  const fileInfoRef = useRef(null);
 
   // Initialize Web Worker
   const initWorker = useCallback(() => {
@@ -104,11 +105,13 @@ export const ImportProvider = ({ children }) => {
   // Parse uploaded file
   const parseFile = useCallback((file) => {
     setIsProcessing(true);
-    setFileInfo({
+    const info = {
       name: file.name,
       size: file.size,
       type: file.type,
-    });
+    };
+    setFileInfo(info);
+    fileInfoRef.current = info; // Store in ref for callback access
 
     const worker = initWorker();
     const reader = new FileReader();
@@ -212,10 +215,11 @@ export const ImportProvider = ({ children }) => {
         totalSalary += salary;
       });
 
-      // Save import history with cost tracking
+      // Save import history with cost tracking - use ref for reliable access
+      const currentFileInfo = fileInfoRef.current || fileInfo;
       await importHistoryDB.add({
-        fileName: fileInfo.name,
-        fileSize: fileInfo.size,
+        fileName: currentFileInfo?.name || 'Unknown',
+        fileSize: currentFileInfo?.size || 0,
         totalRecords: results.totalRows,
         recordsProcessed: results.processedRows,
         recordsSuccessful: results.successfulRows,
@@ -249,7 +253,7 @@ export const ImportProvider = ({ children }) => {
       alert('Error saving import results: ' + error.message);
       setIsProcessing(false);
     }
-  }, [fileInfo]);
+  }, [fileInfo]); // fileInfo in deps for re-render, but we use fileInfoRef.current for reliable access
 
   // Reset import wizard
   const resetImport = useCallback(() => {
