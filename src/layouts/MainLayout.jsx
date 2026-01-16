@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     Moon, Sun, LayoutDashboard, Users, Briefcase,
     Upload, FileText, LogOut, UserCog, TrendingDown,
-    Menu, X
+    Menu, X, Settings
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Toaster } from 'react-hot-toast';
@@ -35,6 +35,7 @@ const MainLayout = ({ currentUser, onLogout }) => {
 
     if (currentUser && currentUser.role === 'admin') {
         navigation.push({ id: '/users', label: 'Users', icon: UserCog });
+        navigation.push({ id: '/settings', label: 'Settings', icon: Settings });
     }
 
     return (

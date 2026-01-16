@@ -11,6 +11,7 @@ import Reports from './components/Reports';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
 import WorkforceComparison from './components/WorkforceComparison';
+import AdminSettings from './components/AdminSettings';
 import { authService } from './services/authService';
 
 // Private Route Wrapper
@@ -88,6 +89,14 @@ function App() {
               element={
                 <AdminRoute>
                   <UserManagement />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <AdminRoute>
+                  <AdminSettings />
                 </AdminRoute>
               }
             />

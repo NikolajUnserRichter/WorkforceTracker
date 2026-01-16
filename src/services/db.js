@@ -542,6 +542,23 @@ export const importHistoryDB = {
   },
 };
 
+// System Operations
+export const systemDB = {
+  async clearAllData() {
+    const db = await initDB();
+    const stores = ['employees', 'projects', 'assignments', 'reductionPrograms', 'importMappings', 'importHistory'];
+
+    // Create one transaction for all stores if possible, or clear sequentially
+    // idb's openDB returns a db instance we can use to start a transaction
+    const tx = db.transaction(stores, 'readwrite');
+
+    await Promise.all(stores.map(store => tx.objectStore(store).clear()));
+    await tx.done;
+
+    return true;
+  }
+};
+
 export default {
   initDB,
   employeeDB,
@@ -550,4 +567,5 @@ export default {
   assignmentDB,
   importMappingDB,
   importHistoryDB,
+  systemDB,
 };
