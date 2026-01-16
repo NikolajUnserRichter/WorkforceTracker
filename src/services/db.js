@@ -107,6 +107,7 @@ export const employeeDB = {
     let processed = 0;
     let inserted = 0;
     let updated = 0;
+    let skipped = 0;
 
     // First, get all existing employee IDs for efficient lookup
     const existingEmployees = await db.getAll('employees');
@@ -117,14 +118,24 @@ export const employeeDB = {
       }
     });
 
-    for (let i = 0; i < employees.length; i += chunkSize) {
-      const chunk = employees.slice(i, i + chunkSize);
+    // Deduplicate incoming data - keep last occurrence of each employeeId
+    const deduplicatedMap = new Map();
+    employees.forEach(emp => {
+      if (emp.employeeId) {
+        deduplicatedMap.set(emp.employeeId, emp);
+      }
+    });
+    const uniqueEmployees = Array.from(deduplicatedMap.values());
+    skipped = employees.length - uniqueEmployees.length;
+
+    for (let i = 0; i < uniqueEmployees.length; i += chunkSize) {
+      const chunk = uniqueEmployees.slice(i, i + chunkSize);
 
       // Process each chunk in a transaction
       const tx = db.transaction('employees', 'readwrite');
       const store = tx.objectStore('employees');
 
-      const promises = chunk.map(employee => {
+      const promises = chunk.map((employee) => {
         const existingId = existingMap.get(employee.employeeId);
 
         if (existingId) {
@@ -132,7 +143,7 @@ export const employeeDB = {
           updated++;
           return store.put({ ...employee, id: existingId });
         } else {
-          // Insert new record
+          // Insert new record - no id means auto-generate
           inserted++;
           return store.add(employee);
         }
@@ -144,12 +155,12 @@ export const employeeDB = {
       processed += chunk.length;
 
       if (onProgress) {
-        onProgress(processed, employees.length);
+        onProgress(processed, uniqueEmployees.length);
       }
     }
 
-    console.log('Bulk import complete: ' + inserted + ' inserted, ' + updated + ' updated');
-    return processed;
+    console.log('Bulk import: ' + inserted + ' inserted, ' + updated + ' updated, ' + skipped + ' duplicates skipped');
+    return employees.length; // Return original count for progress display
   },
 
   // Get employee by ID
