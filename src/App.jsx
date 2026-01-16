@@ -3,8 +3,8 @@
  * Application shell with navigation and routing
  */
 
-import React, { useState } from 'react';
-import { Moon, Sun, LayoutDashboard, Users, Briefcase, Upload, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Moon, Sun, LayoutDashboard, Users, Briefcase, Upload, FileText, LogOut, UserCog } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { ImportProvider } from './contexts/ImportContext';
@@ -12,10 +12,20 @@ import Dashboard from './components/Dashboard';
 import EmployeeList from './components/EmployeeList';
 import Reports from './components/Reports';
 import ImportWizard from './components/import/ImportWizard';
+import Login from './components/Login';
+import UserManagement from './components/UserManagement';
+import { authService } from './services/authService';
+import toast from 'react-hot-toast';
 
-const AppContent = () => {
+const AppContent = ({ currentUser, onLogout }) => {
   const { darkMode, toggleDarkMode, currentView, setCurrentView } = useApp();
   const [showImportWizard, setShowImportWizard] = useState(false);
+
+  const handleLogout = async () => {
+    await onLogout();
+    setCurrentView('dashboard');
+    toast.success('Logged out successfully');
+  };
 
   const navigation = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -23,6 +33,10 @@ const AppContent = () => {
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
+
+  if (currentUser && currentUser.role === 'admin') {
+    navigation.push({ id: 'users', label: 'Users', icon: UserCog });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
@@ -72,6 +86,18 @@ const AppContent = () => {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              {/* User Info */}
+              <div className="hidden md:flex items-center gap-3 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg mr-2">
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    {currentUser.username}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {currentUser.role === 'admin' ? 'Administrator' : 'User'}
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={() => setShowImportWizard(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium text-sm transition-colors"
@@ -90,6 +116,14 @@ const AppContent = () => {
                 ) : (
                   <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 )}
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
           </div>
@@ -139,6 +173,7 @@ const AppContent = () => {
           </div>
         )}
         {currentView === 'reports' && <Reports />}
+        {currentView === 'users' && currentUser.role === 'admin' && <UserManagement />}
       </main>
 
       {/* Import Wizard Modal */}
@@ -162,9 +197,53 @@ const AppContent = () => {
 };
 
 function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      await authService.initializeAdmin();
+      const user = await authService.getCurrentUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
-    <AppProvider>
-      <AppContent />
+    <AppProvider currentUser={currentUser}>
+      <AppContent currentUser={currentUser} onLogout={handleLogout} />
     </AppProvider>
   );
 }

@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { employeeDB, projectDB, reductionProgramDB, assignmentDB } from '../services/db';
+import { authService } from '../services/authService';
 
 const AppContext = createContext();
 
@@ -16,7 +17,8 @@ export const useApp = () => {
   return context;
 };
 
-export const AppProvider = ({ children }) => {
+export const AppProvider = ({ children, currentUser }) => {
+  const [allEmployees, setAllEmployees] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
   const [reductionPrograms, setReductionPrograms] = useState([]);
@@ -29,6 +31,16 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     loadAllData();
   }, []);
+
+  // Apply department filtering when currentUser or allEmployees change
+  useEffect(() => {
+    if (currentUser && currentUser.departments) {
+      const filtered = authService.filterEmployeesByDepartment(allEmployees, currentUser.departments);
+      setEmployees(filtered);
+    } else {
+      setEmployees(allEmployees);
+    }
+  }, [currentUser, allEmployees]);
 
   // Apply dark mode
   useEffect(() => {
@@ -49,7 +61,7 @@ export const AppProvider = ({ children }) => {
         assignmentDB.getAll(),
       ]);
 
-      setEmployees(employeesData);
+      setAllEmployees(employeesData);
       setProjects(projectsData);
       setReductionPrograms(programsData);
       setAssignments(assignmentsData);
@@ -109,7 +121,7 @@ export const AppProvider = ({ children }) => {
   const refreshEmployees = useCallback(async () => {
     try {
       const employeesData = await employeeDB.getAll();
-      setEmployees(employeesData);
+      setAllEmployees(employeesData);
     } catch (error) {
       console.error('Error refreshing employees:', error);
     }
