@@ -1,14 +1,15 @@
 /**
  * Login Component
- * User authentication form
+ * User authentication form using Supabase Auth
  */
 
 import React, { useState } from 'react';
-import { LogIn, User, Lock, AlertCircle } from 'lucide-react';
-import { authService } from '../services/authService';
+import { LogIn, User, Lock, AlertCircle, Mail } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
-const Login = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
+const Login = () => {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,10 +20,17 @@ const Login = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const user = await authService.login(username, password);
-      onLoginSuccess(user);
+      await login(email, password);
+      // Navigation handled by App.jsx based on auth state
     } catch (err) {
-      setError(err.message);
+      // Handle Supabase error messages
+      if (err.message?.includes('Invalid login credentials')) {
+        setError('Invalid email or password');
+      } else if (err.message?.includes('Email not confirmed')) {
+        setError('Please confirm your email before logging in');
+      } else {
+        setError(err.message || 'An error occurred during login');
+      }
     } finally {
       setLoading(false);
     }
@@ -55,21 +63,22 @@ const Login = ({ onLoginSuccess }) => {
               </div>
             )}
 
-            {/* Username Field */}
+            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Username
+                Email
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
-                  placeholder="Enter your username"
+                  placeholder="Enter your email"
                   required
                   autoFocus
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -88,6 +97,7 @@ const Login = ({ onLoginSuccess }) => {
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
                   placeholder="Enter your password"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>
@@ -112,19 +122,11 @@ const Login = ({ onLoginSuccess }) => {
             </button>
           </form>
 
-          {/* Demo Credentials Info */}
+          {/* Info Box */}
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-600 dark:text-gray-400 text-center mb-2">
-              Default admin credentials:
+            <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
+              Contact your administrator if you need access.
             </p>
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-              <p className="text-sm font-mono text-gray-700 dark:text-gray-300">
-                Username: <span className="font-semibold">admin</span>
-              </p>
-              <p className="text-sm font-mono text-gray-700 dark:text-gray-300">
-                Password: <span className="font-semibold">admin123</span>
-              </p>
-            </div>
           </div>
         </div>
 

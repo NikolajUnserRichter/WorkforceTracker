@@ -1,14 +1,31 @@
 /**
  * User Management Component
  * Admin interface to manage users and assign departments
+ *
+ * Supports both IndexedDB (legacy) and Supabase backends.
+ * With Supabase:
+ * - Uses profiles table for user metadata
+ * - New users are invited via email (password set on first login)
+ * - Profile updates require admin privileges
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Edit2, Trash2, Save, X, Shield, Users as UsersIcon, Building2 } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Save, X, Shield, Users as UsersIcon, Building2, AlertCircle } from 'lucide-react';
 import { authService, DEPARTMENTS } from '../services/authService';
+import { supabaseAuthService, DEPARTMENTS as SUPABASE_DEPARTMENTS } from '../services/supabaseAuth';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
+// Check if Supabase is configured
+const useSupabase = () => {
+  return !!import.meta.env.VITE_SUPABASE_URL;
+};
+
+const DepartmentsList = useSupabase() ? SUPABASE_DEPARTMENTS : DEPARTMENTS;
+
 const UserManagement = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -20,6 +37,7 @@ const UserManagement = () => {
     role: 'user',
     departments: [],
   });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -28,8 +46,24 @@ const UserManagement = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const allUsers = await authService.getAllUsers();
-      setUsers(allUsers);
+
+      if (useSupabase()) {
+        const data = await supabaseAuthService.getAllUsers();
+        // Transform Supabase profile format to match expected UI format
+        const transformedUsers = data.map(u => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          role: u.role,
+          departments: u.departments || [],
+          isActive: u.is_active,
+          createdAt: u.created_at,
+        }));
+        setUsers(transformedUsers);
+      } else {
+        const allUsers = await authService.getAllUsers();
+        setUsers(allUsers);
+      }
     } catch (error) {
       toast.error('Failed to load users');
       console.error(error);
@@ -40,34 +74,77 @@ const UserManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
 
     try {
-      if (editingUser) {
-        await authService.updateUser(editingUser.id, formData);
-        toast.success('User updated successfully');
+      if (useSupabase()) {
+        if (editingUser) {
+          // Update existing user profile
+          const updates = {
+            role: formData.role,
+            departments: formData.departments,
+          };
+
+          // Note: Changing username/email requires Supabase Admin API
+          await supabaseAuthService.updateUser(editingUser.id, updates);
+          toast.success('User updated successfully');
+        } else {
+          // Create new user with Supabase Auth
+          // The profile will be created automatically via database trigger
+          await supabaseAuthService.createUser({
+            email: formData.email,
+            password: formData.password,
+            username: formData.username,
+            role: formData.role,
+            departments: formData.departments,
+          });
+          toast.success('User created. They may need to verify their email.');
+        }
       } else {
-        await authService.addUser(formData);
-        toast.success('User added successfully');
+        // IndexedDB path
+        if (editingUser) {
+          await authService.updateUser(editingUser.id, formData);
+          toast.success('User updated successfully');
+        } else {
+          await authService.addUser(formData);
+          toast.success('User added successfully');
+        }
       }
 
       resetForm();
       loadUsers();
     } catch (error) {
-      toast.error(error.message);
+      console.error('User management error:', error);
+      toast.error(error.message || 'Operation failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user?')) {
+    // Prevent self-deletion
+    if (userId === currentUser?.id) {
+      toast.error('You cannot delete your own account');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to deactivate this user?')) {
       return;
     }
 
     try {
-      await authService.deleteUser(userId);
-      toast.success('User deleted successfully');
+      if (useSupabase()) {
+        // With Supabase, we deactivate rather than delete
+        await supabaseAuthService.deactivateUser(userId);
+        toast.success('User deactivated');
+      } else {
+        await authService.deleteUser(userId);
+        toast.success('User deleted');
+      }
       loadUsers();
     } catch (error) {
       toast.error('Failed to delete user');
+      console.error(error);
     }
   };
 
@@ -107,7 +184,7 @@ const UserManagement = () => {
   const selectAllDepartments = () => {
     setFormData(prev => ({
       ...prev,
-      departments: prev.departments.length === DEPARTMENTS.length ? [] : ['ALL']
+      departments: prev.departments.length === DepartmentsList.length ? [] : ['ALL']
     }));
   };
 
@@ -139,6 +216,17 @@ const UserManagement = () => {
         </button>
       </div>
 
+      {/* Supabase Info Notice */}
+      {useSupabase() && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-700 dark:text-blue-300">
+            <strong>Supabase Auth:</strong> New users will receive an email to verify their account.
+            Deleting a user will deactivate their account (they can be reactivated later).
+          </div>
+        </div>
+      )}
+
       {/* Users Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
@@ -167,8 +255,13 @@ const UserManagement = () => {
                 <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4">
                     <div>
-                      <div className="font-medium text-gray-900 dark:text-white">
+                      <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
                         {user.username}
+                        {user.id === currentUser?.id && (
+                          <span className="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">
+                            You
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         {user.email}
@@ -215,6 +308,9 @@ const UserManagement = () => {
                             +{user.departments.length - 2} more
                           </span>
                         )}
+                        {(!user.departments || user.departments.length === 0) && (
+                          <span className="text-xs text-gray-500">No departments</span>
+                        )}
                       </div>
                     )}
                   </td>
@@ -238,8 +334,9 @@ const UserManagement = () => {
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                        title="Delete user"
+                        disabled={user.id === currentUser?.id}
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={user.id === currentUser?.id ? "Can't delete yourself" : 'Delete user'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -247,6 +344,13 @@ const UserManagement = () => {
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    No users found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -278,10 +382,13 @@ const UserManagement = () => {
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white disabled:opacity-50"
                   required
-                  disabled={editingUser}
+                  disabled={editingUser && useSupabase()}
                 />
+                {editingUser && useSupabase() && (
+                  <p className="text-xs text-gray-500 mt-1">Username cannot be changed with Supabase</p>
+                )}
               </div>
 
               {/* Email */}
@@ -293,24 +400,34 @@ const UserManagement = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white disabled:opacity-50"
                   required
+                  disabled={editingUser && useSupabase()}
                 />
+                {editingUser && useSupabase() && (
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed with Supabase</p>
+                )}
               </div>
 
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Password {editingUser ? '(leave blank to keep current)' : '*'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                  required={!editingUser}
-                />
-              </div>
+              {/* Password - only show for new users or IndexedDB */}
+              {(!editingUser || !useSupabase()) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Password {editingUser ? '(leave blank to keep current)' : '*'}
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    required={!editingUser}
+                    minLength={6}
+                  />
+                  {useSupabase() && !editingUser && (
+                    <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                  )}
+                </div>
+              )}
 
               {/* Role */}
               <div>
@@ -323,16 +440,22 @@ const UserManagement = () => {
                   className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   required
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  <option value="user">User (Read-only)</option>
+                  <option value="admin">Admin (Full Access)</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.role === 'admin'
+                    ? 'Admins have full access to all features and all departments'
+                    : 'Users have read-only access to their assigned departments'
+                  }
+                </p>
               </div>
 
               {/* Departments */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Department Access *
+                    Department Access
                   </label>
                   <button
                     type="button"
@@ -345,7 +468,7 @@ const UserManagement = () => {
 
                 <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg p-4 max-h-64 overflow-y-auto">
                   <div className="grid grid-cols-2 gap-2">
-                    {DEPARTMENTS.map((dept) => (
+                    {DepartmentsList.map((dept) => (
                       <label
                         key={dept}
                         className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
@@ -373,14 +496,20 @@ const UserManagement = () => {
               <div className="flex items-center gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  disabled={submitting}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
                 >
-                  <Save className="w-4 h-4" />
+                  {submitting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   {editingUser ? 'Update User' : 'Create User'}
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
+                  disabled={submitting}
                   className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
                 >
                   Cancel

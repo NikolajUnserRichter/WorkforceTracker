@@ -8,11 +8,17 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": ["workforce", "tracking", "management", "resource-planning"],
+  "keywords": [
+    "workforce",
+    "tracking",
+    "management",
+    "resource-planning"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
     "chart.js": "^4.4.0",
     "date-fns": "^4.1.0",
     "idb": "^8.0.0",
