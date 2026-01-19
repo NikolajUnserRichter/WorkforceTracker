@@ -1,6 +1,18 @@
-
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, Filter, Download, Trash2, UserCircle, Clock, ChevronLeft, ChevronRight, RefreshCw, Layers } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Search,
+  Filter,
+  Download,
+  UserCircle,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Building2,
+  ChevronUp,
+  ChevronDown,
+  MoreHorizontal
+} from 'lucide-react';
 import { employeeDB } from '../services/db';
 import toast from 'react-hot-toast';
 
@@ -17,12 +29,12 @@ const EmployeeList = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20; // Smaller chunks for better perceived perf
+  const itemsPerPage = 20;
 
   // Initial Data Load
   useEffect(() => {
     loadDepartments();
-    loadEmployees(); // Load initial page
+    loadEmployees();
   }, []);
 
   // Reload when page or filters change
@@ -48,17 +60,10 @@ const EmployeeList = () => {
       const isFiltering = searchQuery || filterDepartment !== 'all' || filterStatus !== 'all';
 
       if (isFiltering) {
-        // Optimized Filter Strategy could go here.
-        // For now, we use the existing filter method but we should be careful with 110k records.
-        // Ideally we would push this logic to the DB service with optimized indices.
-        // Since employeeDB.filter returns ALL matches, we slice it here for pagination.
-        // This is the bottleneck for searching 110k records but prevents the main thread freeze of loading ALL 110k at startup.
-
         let allMatches = [];
 
         if (searchQuery) {
           allMatches = await employeeDB.searchByName(searchQuery);
-          // Then apply other filters in memory on the search results (usually much smaller set)
           if (filterDepartment !== 'all') {
             allMatches = allMatches.filter(e => e.department === filterDepartment);
           }
@@ -66,7 +71,6 @@ const EmployeeList = () => {
             allMatches = allMatches.filter(e => e.status === filterStatus);
           }
         } else {
-          // Use filter criteria
           const criteria = {};
           if (filterDepartment !== 'all') criteria.department = filterDepartment;
           if (filterStatus !== 'all') criteria.status = filterStatus;
@@ -78,8 +82,6 @@ const EmployeeList = () => {
         data = allMatches.slice(start, start + itemsPerPage);
 
       } else {
-        // Fast Path: Direct Pagination from DB
-        // We need total count first
         count = await employeeDB.count();
         const offset = (currentPage - 1) * itemsPerPage;
         data = await employeeDB.getPaginated(offset, itemsPerPage);
@@ -103,194 +105,217 @@ const EmployeeList = () => {
     setCurrentPage(1);
   };
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'active':
+        return (
+          <span className="badge badge-active">
+            <span className="status-dot status-dot-active" />
+            Active
+          </span>
+        );
+      case 'inactive':
+        return (
+          <span className="badge badge-inactive">
+            <span className="status-dot status-dot-inactive" />
+            Inactive
+          </span>
+        );
+      case 'terminated':
+        return (
+          <span className="badge badge-warning">
+            <span className="status-dot status-dot-warning" />
+            Terminated
+          </span>
+        );
+      default:
+        return (
+          <span className="badge badge-inactive">
+            {status}
+          </span>
+        );
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Employees
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-400">
-              {totalCount.toLocaleString()} Total
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold text-p3-midnight dark:text-white">
+              Employees
+            </h1>
+            <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full">
+              {totalCount.toLocaleString()}
             </span>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Manage your workforce directory
-            </p>
           </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Browse and manage workforce directory
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => loadEmployees()}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            title="Refresh Data"
+            className="btn btn-ghost btn-icon"
+            title="Refresh"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button className="btn btn-secondary btn-sm">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>
 
-      {/* Filters Card */}
-      <div className="card p-5 bg-white dark:bg-gray-900/50 backdrop-blur-sm border border-gray-200 dark:border-gray-800 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <div className="md:col-span-6 lg:col-span-5">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search by name, email, or ID..."
-                value={searchQuery}
-                onChange={handleSearch}
-                className="input-field pl-10 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-800 transition-all font-medium"
-              />
-            </div>
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name, email, or ID..."
+              value={searchQuery}
+              onChange={handleSearch}
+              className="input pl-9"
+            />
           </div>
 
-          <div className="md:col-span-3 lg:col-span-3">
-            <div className="relative">
-              <Layers className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                value={filterDepartment}
-                onChange={(e) => {
-                  setFilterDepartment(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input-field pl-10 appearance-none bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 cursor-pointer"
-              >
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>
-                    {dept === 'all' ? 'All Departments' : dept}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
-            </div>
+          {/* Department Filter */}
+          <div className="sm:w-48">
+            <select
+              value={filterDepartment}
+              onChange={(e) => {
+                setFilterDepartment(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="select"
+            >
+              {departments.map(dept => (
+                <option key={dept} value={dept}>
+                  {dept === 'all' ? 'All Departments' : dept}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="md:col-span-3 lg:col-span-3">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                value={filterStatus}
-                onChange={(e) => {
-                  setFilterStatus(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input-field pl-10 appearance-none bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 cursor-pointer"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="terminated">Terminated</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
-            </div>
+          {/* Status Filter */}
+          <div className="sm:w-36">
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="select"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="terminated">Terminated</option>
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Employee Table */}
-      <div className="card overflow-hidden shadow-lg border border-gray-200 dark:border-gray-800">
-        <div className="overflow-x-auto min-h-[400px]">
-          <table className="w-full">
-            <thead className="bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 text-xs uppercase tracking-wider">
+      {/* Data Table */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="table-container">
+          <table className="table table-sticky">
+            <thead>
               <tr>
-                <th className="px-6 py-4 text-left font-semibold text-gray-500 dark:text-gray-400">
-                  Employee
-                </th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-500 dark:text-gray-400">
-                  Role
-                </th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-500 dark:text-gray-400">
-                  Department
-                </th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-500 dark:text-gray-400">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-500 dark:text-gray-400">
-                  FTE
-                </th>
-                <th className="px-6 py-4 text-left font-semibold text-gray-500 dark:text-gray-400">
-                  Reduction
-                </th>
+                <th className="w-[280px]">Employee</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th className="w-[100px]">Status</th>
+                <th className="w-[80px] text-right">FTE</th>
+                <th className="w-[100px] text-right">Reduction</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody>
               {loading ? (
                 // Loading Skeletons
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-6 py-4"><div className="h-10 w-48 bg-gray-200 dark:bg-gray-800 rounded-lg"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-800 rounded"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-800 rounded"></div></td>
-                    <td className="px-6 py-4"><div className="h-6 w-16 bg-gray-200 dark:bg-gray-800 rounded-full"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-800 rounded"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-800 rounded"></div></td>
+                [...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="skeleton w-9 h-9 rounded-full" />
+                        <div className="space-y-1.5">
+                          <div className="skeleton h-4 w-32" />
+                          <div className="skeleton h-3 w-20" />
+                        </div>
+                      </div>
+                    </td>
+                    <td><div className="skeleton h-4 w-24" /></td>
+                    <td><div className="skeleton h-4 w-20" /></td>
+                    <td><div className="skeleton h-5 w-16 rounded-full" /></td>
+                    <td><div className="skeleton h-4 w-10 ml-auto" /></td>
+                    <td><div className="skeleton h-4 w-12 ml-auto" /></td>
                   </tr>
                 ))
               ) : employees.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                    No employees found matching your criteria.
+                  <td colSpan="6" className="py-12">
+                    <div className="empty-state">
+                      <UserCircle className="empty-state-icon" />
+                      <p className="empty-state-title">No employees found</p>
+                      <p className="empty-state-description">
+                        {searchQuery || filterDepartment !== 'all' || filterStatus !== 'all'
+                          ? 'Try adjusting your filters to find what you're looking for.'
+                          : 'Import HR data to populate your employee directory.'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 employees.map(employee => (
-                  <tr key={employee.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">
-                    <td className="px-6 py-4">
+                  <tr key={employee.id}>
+                    <td>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/50 dark:to-primary-800/30 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-300 shadow-sm">
-                          <UserCircle className="w-6 h-6" />
+                        <div className="w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-p3-midnight dark:text-white">
+                            {employee.name?.charAt(0).toUpperCase() || '?'}
+                          </span>
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-p3-midnight dark:text-white truncate">
                             {employee.name}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                             {employee.employeeId}
-                          </div>
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 font-medium">
-                      {employee.role}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {employee.department}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`
-                          inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-                          ${employee.status === 'active'
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30'
-                          : employee.status === 'inactive'
-                            ? 'bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-                            : 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/30'
-                        }
-                        `}>
-                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${employee.status === 'active' ? 'bg-emerald-500' :
-                            employee.status === 'inactive' ? 'bg-gray-400' : 'bg-rose-500'
-                          }`}></span>
-                        {employee.status}
+                    <td>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {employee.role || '—'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 font-mono">
-                      {employee.fte}%
+                    <td>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {employee.department || '—'}
+                      </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td>
+                      {getStatusBadge(employee.status)}
+                    </td>
+                    <td className="text-right">
+                      <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
+                        {employee.fte}%
+                      </span>
+                    </td>
+                    <td className="text-right">
                       {employee.reductionProgram?.status === 'active' ? (
-                        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md w-fit">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span className="text-xs font-semibold">
-                            {employee.reductionProgram.reductionPercentage}%
-                          </span>
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-warning/10 text-warning rounded">
+                          <Clock className="w-3 h-3" />
+                          {employee.reductionProgram.reductionPercentage}%
+                        </span>
                       ) : (
-                        <span className="text-gray-300 dark:text-gray-700 text-lg">·</span>
+                        <span className="text-gray-300 dark:text-gray-700">—</span>
                       )}
                     </td>
                   </tr>
@@ -300,34 +325,122 @@ const EmployeeList = () => {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        {/* Pagination */}
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50 dark:bg-gray-900/50">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {totalCount > 0 ? (
-              <>Showing <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalCount)}</span> of <span className="font-medium">{totalCount}</span> results</>
-            ) : 'No results'}
-          </div>
+              <>
+                Showing{' '}
+                <span className="font-medium text-p3-midnight dark:text-white">
+                  {((currentPage - 1) * itemsPerPage) + 1}
+                </span>
+                {' '}to{' '}
+                <span className="font-medium text-p3-midnight dark:text-white">
+                  {Math.min(currentPage * itemsPerPage, totalCount)}
+                </span>
+                {' '}of{' '}
+                <span className="font-medium text-p3-midnight dark:text-white">
+                  {totalCount.toLocaleString()}
+                </span>
+                {' '}employees
+              </>
+            ) : (
+              'No results'
+            )}
+          </p>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1 || loading}
-              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn btn-ghost btn-sm btn-icon disabled:opacity-40"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-1 px-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Page {currentPage}</span>
-              <span className="text-sm text-gray-400">/ {totalPages || 1}</span>
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {totalPages <= 7 ? (
+                [...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`
+                      min-w-[32px] h-8 text-xs font-medium rounded-md transition-colors
+                      ${currentPage === i + 1
+                        ? 'bg-p3-electric text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }
+                    `}
+                  >
+                    {i + 1}
+                  </button>
+                ))
+              ) : (
+                <>
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    className={`
+                      min-w-[32px] h-8 text-xs font-medium rounded-md transition-colors
+                      ${currentPage === 1
+                        ? 'bg-p3-electric text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }
+                    `}
+                  >
+                    1
+                  </button>
+
+                  {currentPage > 3 && (
+                    <span className="px-1 text-gray-400">...</span>
+                  )}
+
+                  {[...Array(3)].map((_, i) => {
+                    const page = Math.max(2, Math.min(currentPage - 1 + i, totalPages - 1));
+                    if (page === 1 || page === totalPages) return null;
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`
+                          min-w-[32px] h-8 text-xs font-medium rounded-md transition-colors
+                          ${currentPage === page
+                            ? 'bg-p3-electric text-white'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }
+                        `}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+
+                  {currentPage < totalPages - 2 && (
+                    <span className="px-1 text-gray-400">...</span>
+                  )}
+
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    className={`
+                      min-w-[32px] h-8 text-xs font-medium rounded-md transition-colors
+                      ${currentPage === totalPages
+                        ? 'bg-p3-electric text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }
+                    `}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
             </div>
 
             <button
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages || loading}
-              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={currentPage === totalPages || loading || totalPages === 0}
+              className="btn btn-ghost btn-sm btn-icon disabled:opacity-40"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>

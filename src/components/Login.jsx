@@ -1,11 +1,11 @@
 /**
  * Login Component
  * User authentication form using Supabase Auth
- * Includes signup for first-time setup
+ * P3 Enterprise Design System
  */
 
 import React, { useState } from 'react';
-import { LogIn, User, Lock, AlertCircle, Mail, UserPlus, CheckCircle } from 'lucide-react';
+import { LogIn, Lock, AlertCircle, Mail, UserPlus, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -26,7 +26,6 @@ const Login = () => {
 
     try {
       if (isSignUp) {
-        // Sign up new user
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -46,7 +45,6 @@ const Login = () => {
           setIsSignUp(false);
         }
       } else {
-        // Login existing user
         await login(email, password);
       }
     } catch (err) {
@@ -65,52 +63,50 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <User className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-p3-midnight rounded-lg mb-4">
+            <span className="text-white font-bold text-lg">P3</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-xl font-semibold text-p3-midnight dark:text-white mb-1">
             Workforce Tracker
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {isSignUp ? 'Create your account' : 'Sign in to access your workspace'}
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {isSignUp ? 'Create your account' : 'Sign in to continue'}
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-enterprise-md p-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <div className="p-3 bg-warning/5 border border-warning/20 rounded-md flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-warning">{error}</p>
               </div>
             )}
 
             {/* Success Message */}
             {success && (
-              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+              <div className="p-3 bg-success/5 border border-success/20 rounded-md flex items-start gap-3">
+                <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-success">{success}</p>
               </div>
             )}
 
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
-              </label>
+              <label className="label">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                  className="input pl-10"
                   placeholder="Enter your email"
                   required
                   autoFocus
@@ -121,16 +117,14 @@ const Login = () => {
 
             {/* Password Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Password
-              </label>
+              <label className="label">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                  className="input pl-10"
                   placeholder={isSignUp ? 'Create a password (min 6 chars)' : 'Enter your password'}
                   required
                   autoComplete={isSignUp ? 'new-password' : 'current-password'}
@@ -143,16 +137,16 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 rounded-lg transition-colors"
+              className="btn btn-primary w-full justify-center py-2.5"
             >
               {loading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="spinner" />
                   {isSignUp ? 'Creating account...' : 'Signing in...'}
                 </>
               ) : (
                 <>
-                  {isSignUp ? <UserPlus className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
+                  {isSignUp ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
                   {isSignUp ? 'Create Account' : 'Sign In'}
                 </>
               )}
@@ -160,8 +154,8 @@ const Login = () => {
           </form>
 
           {/* Toggle Sign Up / Sign In */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-800 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}
               <button
                 type="button"
@@ -170,7 +164,7 @@ const Login = () => {
                   setError('');
                   setSuccess('');
                 }}
-                className="ml-2 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                className="ml-1.5 text-p3-electric hover:text-primary-600 font-medium transition-colors"
               >
                 {isSignUp ? 'Sign In' : 'Sign Up'}
               </button>
@@ -179,8 +173,8 @@ const Login = () => {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
-          High-Performance HR Management System
+        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
+          Enterprise HR Cost Management System
         </p>
       </div>
     </div>

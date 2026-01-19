@@ -1,11 +1,12 @@
 /**
  * Import Wizard - Step 1: File Upload
  * Handles file selection and initial upload with progress indication
+ * P3 Enterprise Design System
  */
 
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileSpreadsheet, AlertCircle, Check } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, Check, Info, X } from 'lucide-react';
 import { useImport } from '../../contexts/ImportContext';
 
 const Step1FileUpload = () => {
@@ -44,7 +45,7 @@ const Step1FileUpload = () => {
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
     },
-    maxSize: 200 * 1024 * 1024, // 200MB
+    maxSize: 200 * 1024 * 1024,
     multiple: false,
   });
 
@@ -57,117 +58,126 @@ const Step1FileUpload = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+    <div className="max-w-3xl mx-auto">
+      {/* Instructions */}
+      <div className="mb-6">
+        <h2 className="text-base font-semibold text-p3-midnight dark:text-white mb-1">
           Upload HR Data File
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Upload your employee data file in Excel (.xlsx, .xls) or CSV format.
-          Our system can handle files with 110,000+ rows efficiently.
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Select an Excel or CSV file containing employee data. Files up to 200MB with 110,000+ rows are supported.
         </p>
       </div>
 
+      {/* Dropzone */}
       {!fileInfo && !isProcessing && (
         <div
           {...getRootProps()}
           className={`
-            border-2 border-dashed rounded-lg p-12 text-center cursor-pointer
-            transition-all duration-200
-            ${isDragActive
-              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-              : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500'
-            }
+            dropzone cursor-pointer
+            ${isDragActive ? 'dropzone-active' : ''}
           `}
         >
           <input {...getInputProps()} />
 
-          <div className="flex flex-col items-center">
-            <Upload
-              className={`w-16 h-16 mb-4 ${isDragActive ? 'text-primary-500' : 'text-gray-400'
-                }`}
-            />
+          <div className="flex flex-col items-center py-4">
+            <div className={`
+              w-14 h-14 rounded-lg flex items-center justify-center mb-4
+              ${isDragActive
+                ? 'bg-primary-100 dark:bg-primary-900/30'
+                : 'bg-gray-100 dark:bg-gray-800'
+              }
+            `}>
+              <Upload
+                className={`w-7 h-7 ${isDragActive ? 'text-p3-electric' : 'text-gray-400'}`}
+              />
+            </div>
 
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <p className="text-sm font-medium text-p3-midnight dark:text-white mb-1">
               {isDragActive ? 'Drop file here' : 'Drag & drop your file here'}
-            </h3>
+            </p>
 
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
               or click to browse
             </p>
 
-            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center gap-4 text-xs text-gray-400">
+              <div className="flex items-center gap-1.5">
                 <FileSpreadsheet className="w-4 h-4" />
                 <span>Excel, CSV</span>
               </div>
-              <div>
-                Maximum file size: 200MB
-              </div>
+              <span>Max 200MB</span>
             </div>
           </div>
         </div>
       )}
 
+      {/* Error State */}
       {error && (
-        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-semibold text-red-900 dark:text-red-200 mb-1">
-              Upload Error
-            </h4>
-            <p className="text-red-700 dark:text-red-300 text-sm">
-              {error}
-            </p>
+        <div className="mt-4 p-4 bg-warning/5 border border-warning/20 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-warning">Upload Error</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{error}</p>
           </div>
+          <button
+            onClick={() => setError(null)}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+          >
+            <X className="w-4 h-4 text-gray-400" />
+          </button>
         </div>
       )}
 
+      {/* File Info & Progress */}
       {fileInfo && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-              <FileSpreadsheet className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <div className="w-11 h-11 bg-primary-50 dark:bg-primary-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <FileSpreadsheet className="w-5 h-5 text-p3-electric" />
             </div>
 
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate">
+              <p className="text-sm font-medium text-p3-midnight dark:text-white truncate">
                 {fileInfo.name}
-              </h3>
+              </p>
 
-              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 <span>{formatFileSize(fileInfo.size)}</span>
-                <span className="capitalize">{fileInfo.type.split('/').pop()} file</span>
+                <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                <span className="capitalize">{fileInfo.type.split('/').pop()}</span>
               </div>
 
+              {/* Processing Progress */}
               {isProcessing && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
                       {importProgress.message}
                     </span>
-                    <span className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                    <span className="text-xs font-medium text-p3-electric">
                       {importProgress.progress}%
                     </span>
                   </div>
 
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                  <div className="progress-bar">
                     <div
-                      className="bg-primary-600 dark:bg-primary-500 h-2 rounded-full transition-all duration-300 ease-out"
+                      className="progress-bar-fill"
                       style={{ width: `${importProgress.progress}%` }}
                     />
                   </div>
 
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
                     Phase: {importProgress.phase}
                   </p>
                 </div>
               )}
 
+              {/* Success State */}
               {!isProcessing && importProgress.phase === 'parsing' && (
-                <div className="mt-4 flex items-center gap-2 text-green-600 dark:text-green-400">
-                  <Check className="w-5 h-5" />
-                  <span className="font-medium">File parsed successfully!</span>
+                <div className="mt-3 flex items-center gap-2 text-success">
+                  <Check className="w-4 h-4" />
+                  <span className="text-sm font-medium">File parsed successfully</span>
                 </div>
               )}
             </div>
@@ -175,25 +185,20 @@ const Step1FileUpload = () => {
         </div>
       )}
 
-      <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
-          Supported File Formats
-        </h4>
-        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-          <li>• Excel 2007+ (.xlsx)</li>
-          <li>• Excel 97-2003 (.xls)</li>
-          <li>• Comma-separated values (.csv)</li>
-        </ul>
-
-        <h4 className="font-semibold text-blue-900 dark:text-blue-200 mt-4 mb-2">
-          Performance Capabilities
-        </h4>
-        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-          <li>• Processes 110,000+ employee records</li>
-          <li>• Chunked processing (2,000 rows per chunk)</li>
-          <li>• Background processing keeps UI responsive</li>
-          <li>• Estimated processing: 350+ records/second</li>
-        </ul>
+      {/* Info Panel */}
+      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+        <div className="flex items-start gap-3">
+          <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="font-medium text-gray-600 dark:text-gray-300 mb-2">Supported Formats</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+              <span>Excel 2007+ (.xlsx)</span>
+              <span>Excel 97-2003 (.xls)</span>
+              <span>CSV files (.csv)</span>
+              <span>Up to 110,000+ rows</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

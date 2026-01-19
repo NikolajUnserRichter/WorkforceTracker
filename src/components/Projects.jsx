@@ -1,3 +1,8 @@
+/**
+ * Projects Component
+ * Manage projects and resource allocations
+ * P3 Enterprise Design System
+ */
 
 import React, { useState } from 'react';
 import {
@@ -7,9 +12,7 @@ import {
     Calendar,
     Users,
     MoreVertical,
-    CheckCircle2,
-    Clock,
-    AlertCircle
+    X
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import toast from 'react-hot-toast';
@@ -20,7 +23,6 @@ const Projects = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
 
-    // Form State
     const [formData, setFormData] = useState({
         name: '',
         client: '',
@@ -58,44 +60,63 @@ const Projects = () => {
         }
     };
 
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'active':
+                return <span className="badge badge-active">Active</span>;
+            case 'completed':
+                return <span className="badge badge-inactive">Completed</span>;
+            case 'planned':
+                return <span className="badge badge-analysis">Planned</span>;
+            default:
+                return <span className="badge badge-inactive">{status}</span>;
+        }
+    };
+
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-5 animate-fade-in">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                        Projects
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-lg font-semibold text-p3-midnight dark:text-white">
+                            Projects
+                        </h1>
+                        <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full">
+                            {projects.length}
+                        </span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                         Manage projects and resource allocations
                     </p>
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="btn-primary flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                    className="btn btn-primary"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                     New Project
                 </button>
             </div>
 
             {/* Filters */}
-            <div className="card p-4 bg-white dark:bg-gray-900/50 backdrop-blur-sm border border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative group">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search projects..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="input-field pl-10 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                            className="input pl-9"
                         />
                     </div>
-                    <div className="w-full md:w-48">
+                    <div className="sm:w-40">
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
-                            className="input-field bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                            className="select"
                         >
                             <option value="all">All Status</option>
                             <option value="active">Active</option>
@@ -107,160 +128,165 @@ const Projects = () => {
             </div>
 
             {/* Project Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredProjects.length > 0 ? (
                     filteredProjects.map(project => (
                         <div
                             key={project.id}
-                            className="card p-6 border border-gray-200 dark:border-gray-800 hover:shadow-lg transition-all duration-300 group"
+                            className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5 hover:shadow-enterprise-md hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200"
                         >
                             <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-600 dark:text-indigo-400">
-                                    <Briefcase className="w-6 h-6" />
+                                <div className="p-2.5 bg-analysis/10 rounded-lg">
+                                    <Briefcase className="w-5 h-5 text-analysis" />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${project.status === 'active'
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30'
-                                            : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'
-                                        }`}>
-                                        {project.status === 'active' ? 'Active' : project.status}
-                                    </span>
-                                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                        <MoreVertical className="w-4 h-4" />
+                                    {getStatusBadge(project.status)}
+                                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
+                                        <MoreVertical className="w-4 h-4 text-gray-400" />
                                     </button>
                                 </div>
                             </div>
 
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                            <h3 className="text-sm font-semibold text-p3-midnight dark:text-white mb-1">
                                 {project.name}
                             </h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
                                 {project.client ? `Client: ${project.client}` : 'Internal Project'}
                             </p>
 
-                            <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                    <Calendar className="w-4 h-4 mr-2" />
+                            <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
+                                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <Calendar className="w-3.5 h-3.5 mr-2" />
                                     <span>
                                         {new Date(project.startDate).toLocaleDateString()}
                                         {project.endDate && ` - ${new Date(project.endDate).toLocaleDateString()}`}
                                     </span>
                                 </div>
-
-                                {/* Placeholder for future resource allocation linkage */}
-                                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                    <Users className="w-4 h-4 mr-2" />
+                                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <Users className="w-3.5 h-3.5 mr-2" />
                                     <span>View Resources</span>
                                 </div>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400">
-                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Briefcase className="w-8 h-8 text-gray-400" />
+                    <div className="col-span-full">
+                        <div className="empty-state">
+                            <Briefcase className="empty-state-icon" />
+                            <p className="empty-state-title">No projects found</p>
+                            <p className="empty-state-description">
+                                {searchQuery || filterStatus !== 'all'
+                                    ? 'Try adjusting your filters.'
+                                    : 'Create a new project to get started.'}
+                            </p>
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No projects found</h3>
-                        <p>Create a new project to get started</p>
                     </div>
                 )}
             </div>
 
             {/* Add Project Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-200 dark:border-gray-800 transform transition-all scale-100">
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add New Project</h2>
+                <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+                    <div
+                        className="modal max-w-md"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="modal-header">
+                            <h2 className="modal-title">New Project</h2>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                             >
-                                ✕
+                                <X className="w-5 h-5 text-gray-500" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="input-field"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g. Q4 Marketing Campaign"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client (Optional)</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    value={formData.client}
-                                    onChange={e => setFormData({ ...formData, client: e.target.value })}
-                                    placeholder="e.g. Acme Corp"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleSubmit}>
+                            <div className="modal-body space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                                    <label className="label">
+                                        Project Name <span className="text-warning">*</span>
+                                    </label>
                                     <input
-                                        type="date"
+                                        type="text"
                                         required
-                                        className="input-field"
-                                        value={formData.startDate}
-                                        onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                                        className="input"
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        placeholder="e.g. Q4 Marketing Campaign"
                                     />
                                 </div>
+
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                                    <label className="label">
+                                        Client <span className="label-optional">(Optional)</span>
+                                    </label>
                                     <input
-                                        type="date"
-                                        className="input-field"
-                                        value={formData.endDate}
-                                        onChange={e => setFormData({ ...formData, endDate: e.target.value })}
+                                        type="text"
+                                        className="input"
+                                        value={formData.client}
+                                        onChange={e => setFormData({ ...formData, client: e.target.value })}
+                                        placeholder="e.g. Acme Corp"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="label">
+                                            Start Date <span className="text-warning">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            className="input"
+                                            value={formData.startDate}
+                                            onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label">End Date</label>
+                                        <input
+                                            type="date"
+                                            className="input"
+                                            value={formData.endDate}
+                                            onChange={e => setFormData({ ...formData, endDate: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="label">Status</label>
+                                    <select
+                                        className="select"
+                                        value={formData.status}
+                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="planned">Planned</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="label">Description</label>
+                                    <textarea
+                                        className="input min-h-[80px] resize-none"
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                        placeholder="Project goals and details..."
                                     />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                                <select
-                                    className="input-field"
-                                    value={formData.status}
-                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="planned">Planned</option>
-                                    <option value="completed">Completed</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                                <textarea
-                                    className="input-field min-h-[100px]"
-                                    value={formData.description}
-                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Project goals and details..."
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-3 pt-4">
+                            <div className="modal-footer">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium"
+                                    className="btn btn-secondary"
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="btn-primary px-6"
-                                >
+                                <button type="submit" className="btn btn-primary">
                                     Create Project
                                 </button>
                             </div>

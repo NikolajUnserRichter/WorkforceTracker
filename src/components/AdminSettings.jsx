@@ -1,22 +1,26 @@
+/**
+ * Admin Settings Component
+ * Database management and system configurations
+ * P3 Enterprise Design System
+ */
 
 import React, { useState } from 'react';
 import {
     Database,
     Trash2,
     AlertTriangle,
-    RefreshCw,
     Server,
-    Save,
-    ShieldAlert
+    ShieldAlert,
+    Info
 } from 'lucide-react';
-import { systemDB, employeeDB, projectDB, assignmentDB } from '../services/db';
+import { systemDB, employeeDB, assignmentDB } from '../services/db';
 import { useApp } from '../contexts/AppContext';
 import toast from 'react-hot-toast';
 
 const AdminSettings = () => {
     const { loadAllData } = useApp();
     const [isResetting, setIsResetting] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(null); // 'all' or 'employees' etc.
+    const [showConfirm, setShowConfirm] = useState(null);
 
     const handleReset = async (type) => {
         setIsResetting(true);
@@ -26,18 +30,10 @@ const AdminSettings = () => {
                 toast.success('System database completely reset');
             } else if (type === 'employees') {
                 await employeeDB.clear();
-                await assignmentDB.deleteByEmployee && await assignmentDB.clear(); // assignments depend on employees
+                await assignmentDB.deleteByEmployee && await assignmentDB.clear();
                 toast.success('Employee database cleared');
-            } else if (type === 'projects') {
-                await projectDB.clear && await projectDB.clear(); // projectDB doesn't expose clear directly yet in our mock but db.js has generic access if we added it. 
-                // wait, we didn't add clear to projectDB explicitly in db.js, only systemDB has clearAll.
-                // But systemDB.clearAllData handles everything. 
-                // Let's stick to Clear All for now as requested, or implement granular later if needed.
-                // For now, let's just support Clear All effectively as that's the main request.
-                // Actually, let's just do Clear All.
             }
 
-            // Reload app data
             await loadAllData();
             setShowConfirm(null);
         } catch (error) {
@@ -49,80 +45,131 @@ const AdminSettings = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
+        <div className="space-y-6 animate-fade-in max-w-3xl">
+            {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    System Settings
+                <h1 className="text-lg font-semibold text-p3-midnight dark:text-white">
+                    Settings
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">
-                    database management and system configurations
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Database management and system configuration
                 </p>
             </div>
 
+            {/* Database Status */}
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
+                <div className="flex items-start gap-4">
+                    <div className="p-2.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+                        <Server className="w-5 h-5 text-p3-electric" />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-sm font-semibold text-p3-midnight dark:text-white">
+                            Database Status
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            System storage and performance metrics
+                        </p>
+
+                        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-400">Storage Type</p>
+                                <p className="text-sm font-medium text-p3-midnight dark:text-white">IndexedDB</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400">Status</p>
+                                <p className="text-sm font-medium text-success flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 bg-success rounded-full" />
+                                    Operational
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400">Capacity</p>
+                                <p className="text-sm font-medium text-p3-midnight dark:text-white">110,000+ rows</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-400">Performance</p>
+                                <p className="text-sm font-medium text-p3-midnight dark:text-white">Optimized</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Danger Zone */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-900 overflow-hidden">
-                <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 border-b border-red-200 dark:border-red-900 flex items-center gap-3">
-                    <ShieldAlert className="w-6 h-6 text-red-600 dark:text-red-400" />
-                    <h2 className="text-lg font-bold text-red-900 dark:text-red-200">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-warning/30 overflow-hidden">
+                <div className="bg-warning/5 px-5 py-3 border-b border-warning/20 flex items-center gap-3">
+                    <ShieldAlert className="w-5 h-5 text-warning" />
+                    <h2 className="text-sm font-semibold text-warning">
                         Danger Zone
                     </h2>
                 </div>
 
-                <div className="p-6 space-y-6">
-                    <div className="flex items-start justify-between p-4 border border-red-100 dark:border-red-900/30 rounded-lg bg-red-50/50 dark:bg-red-900/10">
-                        <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                <Database className="w-4 h-4" />
+                <div className="p-5">
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 bg-warning/10 rounded-lg">
+                            <Database className="w-5 h-5 text-warning" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-p3-midnight dark:text-white">
                                 Reset Database
                             </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-xl">
-                                This action will permanently delete ALL data, including employees, projects, assignments, and import history.
-                                This cannot be undone.
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Permanently delete ALL data including employees, projects, assignments, and import history. This action cannot be undone.
                             </p>
-                        </div>
 
-                        {!showConfirm ? (
-                            <button
-                                onClick={() => setShowConfirm('all')}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Clear All Data
-                            </button>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                                    Are you sure?
-                                </span>
-                                <button
-                                    onClick={() => handleReset('all')}
-                                    disabled={isResetting}
-                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                                >
-                                    {isResetting ? 'Clearing...' : 'Yes, Delete Everything'}
-                                </button>
-                                <button
-                                    onClick={() => setShowConfirm(null)}
-                                    disabled={isResetting}
-                                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-start justify-between">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg w-full flex items-center gap-3">
-                            <Server className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            <div>
-                                <h4 className="font-semibold text-blue-900 dark:text-blue-200">Database Status</h4>
-                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                    IndexedDB is active and healthy. Optimizations are enabled.
-                                </p>
+                            <div className="mt-4">
+                                {!showConfirm ? (
+                                    <button
+                                        onClick={() => setShowConfirm('all')}
+                                        className="btn btn-danger btn-sm"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Clear All Data
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-3 p-3 bg-warning/5 border border-warning/20 rounded-lg">
+                                        <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
+                                        <p className="text-sm text-warning flex-1">
+                                            This will permanently delete all data. Are you sure?
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setShowConfirm(null)}
+                                                disabled={isResetting}
+                                                className="btn btn-secondary btn-sm"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={() => handleReset('all')}
+                                                disabled={isResetting}
+                                                className="btn btn-danger btn-sm"
+                                            >
+                                                {isResetting ? (
+                                                    <>
+                                                        <div className="spinner" />
+                                                        Clearing...
+                                                    </>
+                                                ) : (
+                                                    'Yes, Delete Everything'
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Info */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="flex items-start gap-3">
+                    <Info className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Database operations are performed locally using IndexedDB. Your data is stored securely in your browser and is not transmitted to external servers unless configured with Supabase integration.
+                    </p>
                 </div>
             </div>
         </div>
