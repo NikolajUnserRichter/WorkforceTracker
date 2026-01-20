@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     Moon, Sun, LayoutDashboard, Users, Briefcase,
     Upload, FileText, LogOut, UserCog, TrendingDown,
-    Menu, X, Settings, Database, ChevronLeft, Bell
+    Menu, X, Settings, Database, ChevronLeft, Bell, MessageSquare
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Toaster } from 'react-hot-toast';
@@ -32,6 +32,7 @@ const MainLayout = ({ currentUser, onLogout }) => {
         { id: '/projects', label: 'Projects', icon: Briefcase },
         { id: '/comparison', label: 'Cost Tracking', icon: TrendingDown },
         { id: '/reports', label: 'Reports', icon: FileText },
+        { id: '/chat', label: 'AI Assistant', icon: MessageSquare },
     ];
 
     // Admin navigation items

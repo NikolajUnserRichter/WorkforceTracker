@@ -5,12 +5,14 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LogIn, Lock, AlertCircle, Mail, UserPlus, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
 
 const Login = () => {
+  const navigate = useNavigate();
   const { login } = useAuth();
   const { darkMode } = useApp();
   const [email, setEmail] = useState('');
@@ -48,6 +50,8 @@ const Login = () => {
         }
       } else {
         await login(email, password);
+        // Navigate to dashboard after successful login
+        navigate('/', { replace: true });
       }
     } catch (err) {
       if (err.message?.includes('Invalid login credentials')) {

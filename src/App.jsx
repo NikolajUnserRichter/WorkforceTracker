@@ -13,6 +13,7 @@ import UserManagement from './components/UserManagement';
 import WorkforceComparison from './components/WorkforceComparison';
 import AdminSettings from './components/AdminSettings';
 import UploadManagement from './components/UploadManagement';
+import ChatAgent from './components/ChatAgent';
 
 /**
  * Private Route Wrapper
@@ -112,6 +113,7 @@ function AppRoutes() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/comparison" element={<WorkforceComparison />} />
+        <Route path="/chat" element={<ChatAgent />} />
 
         {/* Admin-only routes */}
         <Route
