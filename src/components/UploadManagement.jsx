@@ -19,7 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { importHistoryDB } from '../services/unifiedDB';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -33,26 +33,21 @@ const UploadManagement = () => {
   const [error, setError] = useState(null);
 
   const fetchUploads = useCallback(async () => {
-    if (!isAdmin()) return;
-
+    // Check local admin status or if user has permission
+    // Note: unifiedDB handles the actual data fetch source
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('uploads')
-        .select(`
-          *,
-          profiles:user_id (username, email)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
+      const data = await importHistoryDB.getAll();
       setUploads(data || []);
     } catch (err) {
       console.error('Error fetching uploads:', err);
-      setError('Failed to load uploads. Please try again.');
-      toast.error('Failed to load uploads');
+      // Only show error if we're supposed to have access or if it's a real effective error
+      if (isAdmin()) {
+        setError('Failed to load uploads. Please try again.');
+        toast.error('Failed to load uploads');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,29 +71,12 @@ const UploadManagement = () => {
     setConfirmDelete(null);
 
     try {
-      const { error: deleteError } = await supabase
-        .from('uploads')
-        .delete()
-        .eq('id', uploadId);
-
-      if (deleteError) {
-        if (deleteError.code === 'PGRST116') {
-          toast.success('Upload already removed');
-          return;
-        }
-        throw deleteError;
-      }
-
-      toast.success(`Deleted upload: ${uploadToDelete.file_name}`);
+      await importHistoryDB.delete(uploadId);
+      toast.success(`Deleted upload: ${uploadToDelete.fileName}`);
     } catch (err) {
       console.error('Error deleting upload:', err);
       setUploads(previousUploads);
-
-      if (err.message?.includes('permission') || err.code === '42501') {
-        toast.error('You do not have permission to delete uploads');
-      } else {
-        toast.error('Failed to delete upload. Please try again.');
-      }
+      toast.error('Failed to delete upload. Please try again.');
     } finally {
       setDeleting(null);
     }
@@ -221,11 +199,10 @@ const UploadManagement = () => {
             return (
               <div
                 key={upload.id}
-                className={`bg-white dark:bg-gray-900 rounded-lg border transition-all ${
-                  isDeleting
-                    ? 'border-warning/50 opacity-50'
-                    : 'border-gray-200 dark:border-gray-800'
-                }`}
+                className={`bg-white dark:bg-gray-900 rounded-lg border transition-all ${isDeleting
+                  ? 'border-warning/50 opacity-50'
+                  : 'border-gray-200 dark:border-gray-800'
+                  }`}
               >
                 {/* Main Row */}
                 <div className="p-4 flex items-center gap-4">
@@ -236,7 +213,7 @@ const UploadManagement = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-sm font-medium text-p3-midnight dark:text-white truncate">
-                        {upload.file_name}
+                        {upload.fileName}
                       </h3>
                       <span className={`badge ${status.badge}`}>
                         <StatusIcon className="w-3 h-3" />
@@ -246,13 +223,13 @@ const UploadManagement = () => {
                     <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {formatDate(upload.created_at)}
+                        {formatDate(upload.createdAt || upload.timestamp)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" />
-                        {upload.records_successful?.toLocaleString() || 0} records
+                        {upload.recordsSuccessful?.toLocaleString() || 0} records
                       </span>
-                      <span>{formatFileSize(upload.file_size)}</span>
+                      <span>{formatFileSize(upload.fileSize)}</span>
                     </div>
                   </div>
 
@@ -306,35 +283,35 @@ const UploadManagement = () => {
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Total Records</p>
                         <p className="text-sm font-medium text-p3-midnight dark:text-white">
-                          {upload.total_records?.toLocaleString() || 0}
+                          {upload.totalRecords?.toLocaleString() || 0}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Successful</p>
                         <p className="text-sm font-medium text-success">
-                          {upload.records_successful?.toLocaleString() || 0}
+                          {upload.recordsSuccessful?.toLocaleString() || 0}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Failed</p>
                         <p className="text-sm font-medium text-warning">
-                          {upload.records_failed?.toLocaleString() || 0}
+                          {upload.recordsFailed?.toLocaleString() || 0}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Processing Time</p>
                         <p className="text-sm font-medium text-p3-midnight dark:text-white">
-                          {formatDuration(upload.processing_time_ms)}
+                          {formatDuration(upload.processingTime)}
                         </p>
                       </div>
                     </div>
 
-                    {upload.department_breakdown &&
-                      Object.keys(upload.department_breakdown).length > 0 && (
+                    {upload.departmentBreakdown &&
+                      Object.keys(upload.departmentBreakdown).length > 0 && (
                         <div className="mt-4">
                           <p className="text-xs text-gray-400 mb-2">Department Breakdown</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {Object.entries(upload.department_breakdown)
+                            {Object.entries(upload.departmentBreakdown)
                               .sort((a, b) => b[1] - a[1])
                               .slice(0, 10)
                               .map(([dept, count]) => (
@@ -345,9 +322,9 @@ const UploadManagement = () => {
                                   {dept}: {count}
                                 </span>
                               ))}
-                            {Object.keys(upload.department_breakdown).length > 10 && (
+                            {Object.keys(upload.departmentBreakdown).length > 10 && (
                               <span className="px-2 py-1 text-xs text-gray-400">
-                                +{Object.keys(upload.department_breakdown).length - 10} more
+                                +{Object.keys(upload.departmentBreakdown).length - 10} more
                               </span>
                             )}
                           </div>

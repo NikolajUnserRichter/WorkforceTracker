@@ -20,8 +20,10 @@ import { useAuth } from '../contexts/AuthContext';
 const ImportContext = createContext();
 
 // Check if Supabase is configured
+// TEMPORARILY DISABLED - using IndexedDB for now due to Supabase RLS issues
 const useSupabase = () => {
-  return !!import.meta.env.VITE_SUPABASE_URL;
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  return !!url && url !== 'https://placeholder.supabase.co';
 };
 
 export const useImport = () => {
@@ -229,6 +231,8 @@ export const ImportProvider = ({ children }) => {
       speed: Math.floor(results.processedRows / (duration / 1000)),
     });
 
+    let upload = null; // Lift scope for error handling
+
     try {
       const currentFileInfo = fileInfoRef.current || fileInfo;
       const dbStartTime = performance.now();
@@ -266,7 +270,7 @@ export const ImportProvider = ({ children }) => {
         }));
 
         // 1. Create upload record first
-        const upload = await uploadsDB.create({
+        upload = await uploadsDB.create({
           user_id: user?.id,
           file_name: currentFileInfo?.name || 'Unknown',
           file_size: currentFileInfo?.size || 0,
@@ -287,6 +291,9 @@ export const ImportProvider = ({ children }) => {
           message: `Inserting ${results.employees.length.toLocaleString()} employees...`,
         }));
 
+        console.log('[ImportContext] About to call employeesDB.bulkAdd with', results.employees.length, 'employees, uploadId:', upload.id);
+        console.log('[ImportContext] First employee to insert:', results.employees[0]);
+
         // 2. Bulk insert employees with progress callback
         const insertResult = await employeesDB.bulkAdd(
           results.employees,
@@ -304,11 +311,16 @@ export const ImportProvider = ({ children }) => {
           500 // Batch size
         );
 
+        console.log('[ImportContext] bulkAdd result:', insertResult);
+        if (insertResult.errors?.length > 0) {
+          console.error('[ImportContext] bulkAdd errors:', insertResult.errors);
+        }
+
         // 3. Update upload record with final counts
         await uploadsDB.update(upload.id, {
           records_successful: insertResult.successful,
           records_failed: results.failedRows + insertResult.failed,
-          status: insertResult.failed > 0 ? 'completed' : 'completed',
+          status: 'completed',
         });
 
         performanceMetrics.current.dbInsertTime = performance.now() - dbStartTime;
@@ -379,7 +391,28 @@ export const ImportProvider = ({ children }) => {
       setCurrentStep(4);
     } catch (error) {
       console.error('Error saving import:', error);
-      alert('Error saving import results: ' + error.message);
+
+      const errorMessage = error.details || error.message || 'Unknown error';
+      toast.error(`Import failed: ${errorMessage}`);
+
+      // Attempt to update upload status to failed
+      if (upload && upload.id) {
+        try {
+          await uploadsDB.update(upload.id, {
+            status: 'failed',
+            error_log: [{ message: errorMessage, timestamp: new Date().toISOString() }]
+          });
+        } catch (e) { console.error('Failed to update upload status:', e); }
+      }
+
+      // Set import results to failed state so UI renders
+      setImportResults({
+        ...results,
+        successfulRows: 0,
+        failedRows: results.totalRows, // Mark all as failed effectively
+        errors: [...results.errors, { message: `Database Error: ${errorMessage}` }]
+      });
+
       setIsProcessing(false);
     }
   }, [fileInfo, user]);

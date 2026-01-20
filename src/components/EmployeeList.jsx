@@ -13,7 +13,7 @@ import {
   ChevronDown,
   MoreHorizontal
 } from 'lucide-react';
-import { employeeDB } from '../services/db';
+import { employeeDB } from '../services/unifiedDB';
 import toast from 'react-hot-toast';
 
 const EmployeeList = () => {
@@ -53,6 +53,7 @@ const EmployeeList = () => {
 
   const loadEmployees = useCallback(async () => {
     setLoading(true);
+    console.log('[EmployeeList] loadEmployees called, page:', currentPage);
     try {
       let data = [];
       let count = 0;
@@ -83,15 +84,18 @@ const EmployeeList = () => {
 
       } else {
         count = await employeeDB.count();
+        console.log('[EmployeeList] count result:', count);
         const offset = (currentPage - 1) * itemsPerPage;
         data = await employeeDB.getPaginated(offset, itemsPerPage);
+        console.log('[EmployeeList] getPaginated result:', data?.length, 'employees');
       }
 
       setEmployees(data);
       setTotalCount(count);
+      console.log('[EmployeeList] state updated, count:', count, 'employees:', data?.length);
 
     } catch (error) {
-      console.error('Error loading employees:', error);
+      console.error('[EmployeeList] Error loading employees:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
@@ -264,7 +268,7 @@ const EmployeeList = () => {
                       <p className="empty-state-title">No employees found</p>
                       <p className="empty-state-description">
                         {searchQuery || filterDepartment !== 'all' || filterStatus !== 'all'
-                          ? 'Try adjusting your filters to find what you're looking for.'
+                          ? 'Try adjusting your filters to find what you are looking for.'
                           : 'Import HR data to populate your employee directory.'}
                       </p>
                     </div>

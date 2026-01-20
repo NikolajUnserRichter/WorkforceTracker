@@ -10,7 +10,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { employeeDB } from '../services/db';
+import { employeeDB } from '../services/unifiedDB';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';

@@ -113,6 +113,10 @@ export const supabaseAuthService = {
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 = no rows returned
+      // Ignore AbortError - expected in React Strict Mode dev
+      if (error.message?.includes('AbortError') || error.message?.includes('aborted')) {
+        return null;
+      }
       console.error('Error fetching profile:', error);
     }
     return data;

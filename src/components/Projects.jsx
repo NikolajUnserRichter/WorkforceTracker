@@ -22,6 +22,7 @@ const Projects = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [activeMenu, setActiveMenu] = useState(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -141,9 +142,30 @@ const Projects = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {getStatusBadge(project.status)}
-                                    <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
-                                        <MoreVertical className="w-4 h-4 text-gray-400" />
-                                    </button>
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setActiveMenu(activeMenu === project.id ? null : project.id)}
+                                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                                        >
+                                            <MoreVertical className="w-4 h-4 text-gray-400" />
+                                        </button>
+
+                                        {activeMenu === project.id && (
+                                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 py-1">
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm('Are you sure you want to delete this project?')) {
+                                                            deleteProject(project.id);
+                                                            setActiveMenu(null);
+                                                        }
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                >
+                                                    Delete Project
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

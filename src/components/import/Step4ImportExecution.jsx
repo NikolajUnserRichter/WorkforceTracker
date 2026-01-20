@@ -9,7 +9,7 @@ import { CheckCircle, XCircle, AlertTriangle, Download, Home, Eye, Upload } from
 import { useImport } from '../../contexts/ImportContext';
 import { useApp } from '../../contexts/AppContext';
 
-const Step4ImportExecution = () => {
+const Step4ImportExecution = ({ onClose }) => {
   const {
     startImport,
     importProgress,
@@ -83,6 +83,7 @@ const Step4ImportExecution = () => {
   const handleViewEmployees = async () => {
     await refreshEmployees();
     resetImport();
+    if (onClose) onClose();
     navigate('/employees');
   };
 

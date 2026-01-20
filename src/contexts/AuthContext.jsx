@@ -23,13 +23,31 @@ export function AuthProvider({ children }) {
   // Initialize auth state from Supabase session
   useEffect(() => {
     let mounted = true;
+    let timeoutId;
 
     async function initializeAuth() {
+      // Set a fallback timeout to ensure we don't stay loading forever
+      timeoutId = setTimeout(() => {
+        if (mounted && loading) {
+          console.warn('Auth initialization timeout - proceeding without auth');
+          setLoading(false);
+          setInitialized(true);
+        }
+      }, 8000);
+
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Session error:', error);
+          throw error;
+        }
 
         if (session?.user && mounted) {
-          const profile = await supabaseAuthService.getProfile(session.user.id);
+          const profile = await supabaseAuthService.getProfile(session.user.id).catch((err) => {
+            console.error('Profile fetch error:', err);
+            return null;
+          });
 
           if (profile && profile.is_active) {
             setUser({
@@ -42,13 +60,23 @@ export function AuthProvider({ children }) {
             });
           } else {
             // User exists but profile is inactive or missing
-            await supabase.auth.signOut();
+            await supabase.auth.signOut().catch(() => {});
             setUser(null);
           }
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        // Ignore AbortError - this happens in React Strict Mode during development
+        // when components are mounted, unmounted, then remounted
+        if (error?.name === 'AbortError' || error?.message?.includes('AbortError') || error?.message?.includes('aborted')) {
+          console.log('Auth request aborted (expected in dev mode)');
+        } else {
+          console.error('Error initializing auth:', error);
+        }
+        if (mounted) {
+          setUser(null);
+        }
       } finally {
+        clearTimeout(timeoutId);
         if (mounted) {
           setLoading(false);
           setInitialized(true);
@@ -64,30 +92,20 @@ export function AuthProvider({ children }) {
         if (!mounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await supabaseAuthService.getProfile(session.user.id);
-
-          if (profile && profile.is_active) {
-            setUser({
-              id: session.user.id,
-              email: session.user.email,
-              username: profile.username,
-              role: profile.role,
-              departments: profile.departments || [],
-              isActive: profile.is_active,
-            });
-          }
+          // Don't fetch profile here - let the login function handle it
+          // This prevents double-fetching and potential hangs
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          // Refresh profile data on token refresh
-          const profile = await supabaseAuthService.getProfile(session.user.id);
-          if (profile) {
-            setUser((prev) => ({
+          // Refresh profile data on token refresh with timeout
+          const profile = await supabaseAuthService.getProfile(session.user.id).catch(() => null);
+          if (profile && mounted) {
+            setUser((prev) => prev ? ({
               ...prev,
               role: profile.role,
               departments: profile.departments || [],
               isActive: profile.is_active,
-            }));
+            }) : null);
           }
         }
       }
@@ -95,6 +113,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);

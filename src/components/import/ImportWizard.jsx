@@ -25,6 +25,14 @@ const ImportWizard = ({ onClose }) => {
   const CurrentStepComponent = steps[currentStep - 1].component;
 
   const handleClose = () => {
+    // If import is complete (success) or just started (step 1), close without confirmation
+    if (importResults || currentStep === 1) {
+      resetImport();
+      onClose();
+      return;
+    }
+
+    // Only ask for confirmation if user is in the middle of the process
     if (window.confirm('Are you sure you want to close? Any unsaved progress will be lost.')) {
       resetImport();
       onClose();
@@ -135,9 +143,8 @@ const ImportWizard = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 min-h-[400px]">
-          <CurrentStepComponent />
+          <CurrentStepComponent onClose={onClose} />
         </div>
       </div>
     </div>

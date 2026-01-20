@@ -111,9 +111,11 @@ const MainLayout = ({ currentUser, onLogout }) => {
                 <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
                     {!sidebarCollapsed && (
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-p3-midnight rounded-md flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">P3</span>
-                            </div>
+                            <img
+                                src={darkMode ? "/P3_electricblue.png" : "/P3_Logo_midnightblue.png"}
+                                alt="P3"
+                                className="w-8 h-8 object-contain"
+                            />
                             <div>
                                 <h1 className="text-sm font-semibold text-p3-midnight dark:text-white leading-tight">
                                     Workforce Tracker
@@ -125,9 +127,11 @@ const MainLayout = ({ currentUser, onLogout }) => {
                         </div>
                     )}
                     {sidebarCollapsed && (
-                        <div className="w-8 h-8 bg-p3-midnight rounded-md flex items-center justify-center mx-auto">
-                            <span className="text-white font-bold text-sm">P3</span>
-                        </div>
+                        <img
+                            src={darkMode ? "/P3_electricblue.png" : "/P3_Logo_midnightblue.png"}
+                            alt="P3"
+                            className="w-8 h-8 object-contain mx-auto"
+                        />
                     )}
                 </div>
 
@@ -202,9 +206,11 @@ const MainLayout = ({ currentUser, onLogout }) => {
 
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center gap-2">
-                        <div className="w-7 h-7 bg-p3-midnight rounded-md flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">P3</span>
-                        </div>
+                        <img
+                            src={darkMode ? "/P3_electricblue.png" : "/P3_Logo_midnightblue.png"}
+                            alt="P3"
+                            className="w-7 h-7 object-contain"
+                        />
                         <span className="font-semibold text-p3-midnight dark:text-white text-sm">
                             Workforce Tracker
                         </span>
@@ -274,9 +280,11 @@ const MainLayout = ({ currentUser, onLogout }) => {
                         {/* Mobile Sidebar Header */}
                         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-p3-midnight rounded-md flex items-center justify-center">
-                                    <span className="text-white font-bold text-sm">P3</span>
-                                </div>
+                                <img
+                                    src={darkMode ? "/P3_electricblue.png" : "/P3_Logo_midnightblue.png"}
+                                    alt="P3"
+                                    className="w-8 h-8 object-contain"
+                                />
                                 <span className="font-semibold text-p3-midnight dark:text-white">
                                     Workforce Tracker
                                 </span>

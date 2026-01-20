@@ -103,9 +103,7 @@ function AppRoutes() {
       <Route
         element={
           <PrivateRoute>
-            <AppProvider currentUser={user}>
-              <MainLayout currentUser={user} onLogout={logout} />
-            </AppProvider>
+            <MainLayout currentUser={user} onLogout={logout} />
           </PrivateRoute>
         }
       >
@@ -155,8 +153,10 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster position="top-right" />
-        <AppRoutes />
+        <AppProvider>
+          <Toaster position="top-right" />
+          <AppRoutes />
+        </AppProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -10,7 +10,7 @@ import {
   projectDB,
   reductionProgramDB,
   assignmentDB
-} from '../services/db';
+} from '../services/unifiedDB';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
 
@@ -62,14 +62,14 @@ export const AppProvider = ({ children, currentUser }) => {
     setLoading(true);
     try {
       const [projectsData, programsData] = await Promise.all([
-        projectDB.getAll(),
-        reductionProgramDB.getActive(),
+        projectDB.getAll().catch(() => []),
+        reductionProgramDB.getActive().catch(() => []),
       ]);
-      setProjects(projectsData);
-      setReductionPrograms(programsData);
+      setProjects(projectsData || []);
+      setReductionPrograms(programsData || []);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Failed to load application data');
+      // Don't show error toast on initial load - DB might not be initialized yet
     } finally {
       setLoading(false);
     }
@@ -147,7 +147,7 @@ export const AppProvider = ({ children, currentUser }) => {
       return true;
     } catch (error) {
       console.error('Add project error:', error);
-      toast.error('Failed to add project');
+      toast.error('Failed to add project: ' + (error.message || 'Unknown error'));
       return false;
     }
   };
@@ -173,7 +173,7 @@ export const AppProvider = ({ children, currentUser }) => {
       return true;
     } catch (error) {
       console.error('Delete project error:', error);
-      toast.error('Failed to delete project');
+      toast.error('Failed to delete project: ' + (error.message || 'Unknown error'));
       return false;
     }
   };

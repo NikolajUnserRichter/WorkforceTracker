@@ -36,14 +36,35 @@ export const uploadsDB = {
    * Create a new upload record
    */
   async create(uploadData) {
-    const { data, error } = await supabase
-      .from('uploads')
-      .insert(uploadData)
-      .select()
-      .single();
+    console.log('[Debug] Creating upload with data:', uploadData);
 
-    if (error) throw error;
-    return data;
+    // Ensure error_log and department_breakdown are properly formatted for JSONB
+    const cleanedData = {
+      ...uploadData,
+      error_log: uploadData.error_log || [],
+      department_breakdown: uploadData.department_breakdown || {},
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('uploads')
+        .insert([cleanedData])
+        .select();
+
+      if (error) {
+        console.error('[Debug] Upload creation failed:', error);
+        throw error;
+      }
+
+      // Return the first (and should be only) record
+      if (!data || data.length === 0) {
+        throw new Error('Upload record was not created');
+      }
+      return data[0];
+    } catch (e) {
+      console.error('[Debug] Exception in create upload:', e);
+      throw e;
+    }
   },
 
   /**
@@ -84,11 +105,10 @@ export const uploadsDB = {
       .from('uploads')
       .update(updates)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
 
     if (error) throw error;
-    return data;
+    return data?.[0] || null;
   },
 
   /**
@@ -122,6 +142,105 @@ export const uploadsDB = {
 /**
  * Employee Operations
  */
+// Allowed columns in the Supabase employees table (from schema)
+const ALLOWED_EMPLOYEE_COLUMNS = new Set([
+  'id',
+  'upload_id',
+  'employee_id',
+  'name',
+  'email',
+  'phone',
+  'department',
+  'division',
+  'company',
+  'country',
+  'role',
+  'status',
+  'fte',
+  'start_date',
+  'end_date',
+  'date_of_birth',
+  'base_salary',
+  'pay_scale',
+  'hourly_rate',
+  'cost_center',
+  'manager_id',
+  'location',
+  'building',
+  'floor',
+  'desk',
+  'reduction_percentage',
+  'reduction_start_date',
+  'reduction_end_date',
+  'reduction_status',
+  'raw_data',
+  'created_at',
+  'updated_at',
+]);
+
+const transformEmployeeForSupabase = (employee) => {
+  const transformed = {};
+
+  // Convert camelCase to snake_case and map to allowed columns
+  const fieldMapping = {
+    employeeId: 'employee_id',
+    jobTitle: 'role',  // Map jobTitle to role
+    startDate: 'start_date',
+    endDate: 'end_date',
+    dateOfBirth: 'date_of_birth',
+    baseSalary: 'base_salary',
+    payScale: 'pay_scale',
+    hourlyRate: 'hourly_rate',
+    costCenter: 'cost_center',
+    managerId: 'manager_id',
+    reductionPercentage: 'reduction_percentage',
+    reductionStartDate: 'reduction_start_date',
+    reductionEndDate: 'reduction_end_date',
+    reductionStatus: 'reduction_status',
+    rawData: 'raw_data',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    uploadId: 'upload_id',
+  };
+
+  // Process each field from the input
+  for (const [key, value] of Object.entries(employee)) {
+    // Skip null/undefined values
+    if (value === null || value === undefined) continue;
+
+    // Map camelCase to snake_case if mapping exists
+    const mappedKey = fieldMapping[key] || key;
+
+    // Only include if it's an allowed column
+    if (ALLOWED_EMPLOYEE_COLUMNS.has(mappedKey)) {
+      transformed[mappedKey] = value;
+    }
+  }
+
+  // Sanitize Date Fields: Convert "" to null to prevent invalid input syntax
+  ['start_date', 'end_date', 'created_at', 'date_of_birth', 'reduction_start_date', 'reduction_end_date'].forEach(field => {
+    if (transformed[field] === '') {
+      transformed[field] = null;
+    }
+  });
+
+  // Ensure numeric fields are numbers (Supabase strict types)
+  if (transformed.fte !== undefined) {
+    transformed.fte = parseFloat(transformed.fte) || 100;
+  }
+  if (transformed.base_salary !== undefined) {
+    transformed.base_salary = parseFloat(transformed.base_salary) || null;
+  }
+  if (transformed.hourly_rate !== undefined) {
+    transformed.hourly_rate = parseFloat(transformed.hourly_rate) || null;
+  }
+  if (transformed.reduction_percentage !== undefined) {
+    transformed.reduction_percentage = parseFloat(transformed.reduction_percentage) || 0;
+  }
+
+  return transformed;
+};
+
 export const employeesDB = {
   /**
    * Add single employee
@@ -129,7 +248,7 @@ export const employeesDB = {
   async add(employee) {
     const { data, error } = await supabase
       .from('employees')
-      .insert(employee)
+      .insert(transformEmployeeForSupabase(employee))
       .select()
       .single();
 
@@ -152,16 +271,32 @@ export const employeesDB = {
    * @returns {Object} { successful, failed, errors }
    */
   async bulkAdd(employees, uploadId, onProgress = null, batchSize = DEFAULT_BATCH_SIZE) {
+    console.log('[supabaseDB.bulkAdd] Called with', employees?.length, 'employees, uploadId:', uploadId);
     const totalTimer = createTimer('Total bulk insert');
 
+    if (!uploadId) {
+      console.error('[supabaseDB.bulkAdd] ERROR: No uploadId provided!');
+      return { successful: 0, failed: employees?.length || 0, errors: [{ error: 'No uploadId provided' }], totalTime: 0 };
+    }
+
+    if (!employees || employees.length === 0) {
+      console.warn('[supabaseDB.bulkAdd] No employees to insert');
+      return { successful: 0, failed: 0, errors: [], totalTime: 0 };
+    }
+
     // Prepare employees with upload_id
-    const preparedEmployees = employees.map((emp) => ({
-      ...emp,
-      upload_id: uploadId,
-      // Ensure required fields
-      employee_id: emp.employee_id || emp.employeeId,
-      name: emp.name || 'Unknown',
-    }));
+    const preparedEmployees = employees.map((emp) => {
+      const transformed = transformEmployeeForSupabase(emp);
+      return {
+        ...transformed,
+        upload_id: uploadId,
+        // Ensure required fields (use snake_case keys now)
+        employee_id: transformed.employee_id || 'UNKNOWN',
+        name: transformed.name || 'Unknown',
+      };
+    });
+
+    console.log('[supabaseDB.bulkAdd] First prepared employee:', preparedEmployees[0]);
 
     // Deduplicate by employee_id (keep last occurrence)
     const dedupeTimer = createTimer('Deduplication');
@@ -196,11 +331,15 @@ export const employeesDB = {
 
         if (error) {
           // Batch failed - record error and continue
-          console.error(`Batch ${i / batchSize + 1} failed:`, error);
+          console.error(`[Debug] Batch ${i / batchSize + 1} failed:`, error);
+          console.error(`[Debug] First item in failed batch:`, batch[0]);
           failed += batch.length;
           errors.push({
             batch: Math.floor(i / batchSize) + 1,
             error: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
             recordCount: batch.length,
           });
         } else {
@@ -288,6 +427,7 @@ export const employeesDB = {
    */
   async getPaginated({ page = 1, limit = 50, uploadId = null, filters = {} }) {
     const offset = (page - 1) * limit;
+    console.log('[supabaseDB] getPaginated called, page:', page, 'limit:', limit, 'offset:', offset);
 
     let query = supabase
       .from('employees')
@@ -314,6 +454,11 @@ export const employeesDB = {
     const { data, count, error } = await query
       .order('name')
       .range(offset, offset + limit - 1);
+
+    console.log('[supabaseDB] getPaginated result: count=', count, 'data length=', data?.length, 'error=', error);
+    if (data?.length > 0) {
+      console.log('[supabaseDB] First employee:', data[0]);
+    }
 
     if (error) throw error;
 
@@ -377,7 +522,7 @@ export const employeesDB = {
   async update(id, updates) {
     const { data, error } = await supabase
       .from('employees')
-      .update(updates)
+      .update(transformEmployeeForSupabase(updates))
       .eq('id', id)
       .select()
       .single();
@@ -416,6 +561,7 @@ export const employeesDB = {
    * Get employee count
    */
   async count(uploadId = null) {
+    console.log('[supabaseDB] count() called, uploadId:', uploadId);
     let query = supabase
       .from('employees')
       .select('*', { count: 'exact', head: true });
@@ -425,6 +571,7 @@ export const employeesDB = {
     }
 
     const { count, error } = await query;
+    console.log('[supabaseDB] count result:', count, 'error:', error);
 
     if (error) throw error;
     return count;
@@ -471,7 +618,7 @@ export const employeesDB = {
     // Get department breakdown using RPC or manual aggregation
     let deptQuery = supabase
       .from('employees')
-      .select('department, status, fte, reduction_percentage');
+      .select('department, status, role, fte, reduction_percentage');
 
     if (uploadId) {
       deptQuery = deptQuery.eq('upload_id', uploadId);
@@ -482,9 +629,11 @@ export const employeesDB = {
     // Calculate aggregations in JS (could be moved to DB function for better performance)
     const departmentCounts = {};
     const statusCounts = {};
+    const roleCounts = {};
     let totalFTE = 0;
     let totalCapacity = 0;
     let availableEmployees = 0;
+    let reductionImpactSum = 0;
 
     employees?.forEach((emp) => {
       // Department counts
@@ -495,12 +644,17 @@ export const employeesDB = {
       const status = emp.status || 'unknown';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
 
+      // Role counts
+      const role = emp.role || 'Unknown';
+      roleCounts[role] = (roleCounts[role] || 0) + 1;
+
       // FTE calculations
       const fte = parseFloat(emp.fte) || 100;
       totalFTE += fte;
 
       // Reduction impact
       const reduction = parseFloat(emp.reduction_percentage) || 0;
+      reductionImpactSum += reduction;
       totalCapacity += fte * (1 - reduction / 100);
 
       // Availability
@@ -515,7 +669,9 @@ export const employeesDB = {
       availableEmployees,
       departmentCounts,
       statusCounts,
+      roleCounts,
       totalFTE,
+      reductionImpactSum,
     };
   },
 
@@ -536,16 +692,46 @@ export const employeesDB = {
 /**
  * Project Operations
  */
+const transformProjectForSupabase = (project) => {
+  const transformed = { ...project };
+
+  // Convert camelCase to snake_case
+  if (transformed.startDate) {
+    transformed.start_date = transformed.startDate;
+    delete transformed.startDate;
+  }
+  if (transformed.endDate) {
+    transformed.end_date = transformed.endDate;
+    delete transformed.endDate;
+  }
+  if (transformed.clientId) {
+    transformed.client_id = transformed.clientId;
+    delete transformed.clientId;
+  }
+
+  // Remove fields not present in Supabase schema
+  if ('client' in transformed) {
+    delete transformed.client;
+  }
+
+  // Ensure status assumes default if missing
+  if (!transformed.status) {
+    transformed.status = 'active';
+  }
+
+  return transformed;
+};
+
 export const projectsDB = {
   async add(project) {
     const { data, error } = await supabase
       .from('projects')
-      .insert(project)
+      .insert(transformProjectForSupabase(project))
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return data.id;
   },
 
   async get(id) {
@@ -583,7 +769,7 @@ export const projectsDB = {
   async update(id, updates) {
     const { data, error } = await supabase
       .from('projects')
-      .update(updates)
+      .update(transformProjectForSupabase(updates))
       .eq('id', id)
       .select()
       .single();

@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { initDB } from '../services/db';
+import { importHistoryDB } from '../services/unifiedDB';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
@@ -35,12 +35,12 @@ const WorkforceComparison = () => {
   const loadImportHistory = async () => {
     try {
       setLoading(true);
-      const db = await initDB();
-      const history = await db.getAll('importHistory');
+      const history = await importHistoryDB.getAll();
 
       // Sort by timestamp descending (newest first)
-      const sorted = history.sort((a, b) =>
-        new Date(b.timestamp) - new Date(a.timestamp)
+      // Handle both IndexedDB (timestamp) and Supabase (created_at) formats
+      const sorted = (history || []).sort((a, b) =>
+        new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at)
       );
 
       setImportHistory(sorted);
@@ -60,18 +60,31 @@ const WorkforceComparison = () => {
     }
   };
 
+  // Helper to normalize field names between IndexedDB and Supabase formats
+  const normalizeRecord = (record) => ({
+    ...record,
+    totalRecords: record.totalRecords || record.total_records || 0,
+    totalSalary: record.totalSalary || record.total_salary || 0,
+    departmentBreakdown: record.departmentBreakdown || record.department_breakdown || {},
+    fileName: record.fileName || record.file_name || 'Unknown',
+    timestamp: record.timestamp || record.created_at,
+  });
+
   // Calculate comparison metrics
   const comparison = useMemo(() => {
     if (!selectedBaseline || !selectedCurrent) {
       return null;
     }
 
-    const baseline = importHistory.find(h => h.id === selectedBaseline);
-    const current = importHistory.find(h => h.id === selectedCurrent);
+    const baselineRaw = importHistory.find(h => h.id === selectedBaseline);
+    const currentRaw = importHistory.find(h => h.id === selectedCurrent);
 
-    if (!baseline || !current) {
+    if (!baselineRaw || !currentRaw) {
       return null;
     }
+
+    const baseline = normalizeRecord(baselineRaw);
+    const current = normalizeRecord(currentRaw);
 
     // Calculate headcount changes
     const headcountChange = current.totalRecords - baseline.totalRecords;

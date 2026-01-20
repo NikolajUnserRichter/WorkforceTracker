@@ -7,10 +7,12 @@
 import React, { useState } from 'react';
 import { LogIn, Lock, AlertCircle, Mail, UserPlus, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useApp } from '../contexts/AppContext';
 import { supabase } from '../lib/supabase';
 
 const Login = () => {
   const { login } = useAuth();
+  const { darkMode } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -67,9 +69,11 @@ const Login = () => {
       <div className="w-full max-w-sm">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-p3-midnight rounded-lg mb-4">
-            <span className="text-white font-bold text-lg">P3</span>
-          </div>
+          <img
+            src={darkMode ? "/P3_electricblue.png" : "/P3_Logo_midnightblue.png"}
+            alt="P3"
+            className="w-14 h-14 object-contain mx-auto mb-4"
+          />
           <h1 className="text-xl font-semibold text-p3-midnight dark:text-white mb-1">
             Workforce Tracker
           </h1>
