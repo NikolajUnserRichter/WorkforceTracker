@@ -51,7 +51,8 @@ const Login = () => {
       } else {
         await login(email, password);
         // Navigate to dashboard after successful login
-        navigate('/', { replace: true });
+        // Navigate to dashboard handled by PublicRoute wrapper
+        // navigate('/', { replace: true });
       }
     } catch (err) {
       if (err.message?.includes('Invalid login credentials')) {
