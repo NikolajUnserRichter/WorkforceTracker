@@ -11,9 +11,9 @@ const AZURE_ENDPOINT = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT;
 const API_KEY = import.meta.env.VITE_AZURE_OPENAI_KEY;
 
 /**
- * System prompt for the workforce tracker assistant
+ * Base system prompt for the workforce tracker assistant
  */
-const SYSTEM_PROMPT = `You are an AI assistant for the P3 Workforce Tracker application. You help users with:
+const BASE_SYSTEM_PROMPT = `You are an AI assistant for the P3 Workforce Tracker application. You help users with:
 
 - Understanding workforce data and employee information
 - Analyzing department distributions and costs
@@ -22,9 +22,72 @@ const SYSTEM_PROMPT = `You are an AI assistant for the P3 Workforce Tracker appl
 - Answering questions about HR data management
 - Providing insights about workforce planning
 
-Be helpful, concise, and professional. When discussing data, remind users that you don't have direct access to their database but can help them understand how to use the application features.
+Be helpful, concise, and professional. Format your responses using markdown when appropriate for better readability.
 
-Format your responses using markdown when appropriate for better readability.`;
+IMPORTANT: When answering questions about the data, use the ACTUAL DATA provided in the context below. Do not say you don't have access to the data - you DO have access to the aggregated statistics.`;
+
+/**
+ * Generate system prompt with data context
+ * @param {Object} dataContext - Aggregated workforce data
+ * @returns {string} - Complete system prompt with data
+ */
+export function generateSystemPrompt(dataContext = null) {
+  if (!dataContext || !dataContext.totalEmployees) {
+    return BASE_SYSTEM_PROMPT + `
+
+NOTE: No workforce data is currently loaded. Guide the user to import data using the Import function.`;
+  }
+
+  const dataSection = `
+
+=== CURRENT WORKFORCE DATA ===
+
+OVERVIEW:
+- Total Employees: ${dataContext.totalEmployees.toLocaleString()}
+- Total FTE: ${dataContext.totalFTE?.toLocaleString() || 'N/A'}
+- Total Annual Salary: €${dataContext.totalSalary?.toLocaleString() || 'N/A'}
+- Employees in Reduction Programs: ${dataContext.employeesWithReduction || 0}
+- Number of Departments: ${Object.keys(dataContext.departmentDetails || {}).length}
+
+DEPARTMENT BREAKDOWN:
+${Object.entries(dataContext.departmentDetails || {})
+  .sort((a, b) => b[1].count - a[1].count)
+  .slice(0, 15)
+  .map(([name, data]) => `- ${name}: ${data.count} employees, ${data.totalFTE?.toFixed(0) || 'N/A'} FTE, €${data.totalSalary?.toLocaleString() || 'N/A'} total salary`)
+  .join('\n')}
+
+${Object.keys(dataContext.departmentDetails || {}).length > 15 ? `... and ${Object.keys(dataContext.departmentDetails).length - 15} more departments` : ''}
+
+COST CENTERS (Top 10):
+${Object.entries(dataContext.costCenterCounts || {})
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 10)
+  .map(([name, count]) => `- ${name}: ${count} employees`)
+  .join('\n') || 'No cost center data available'}
+
+LOCATIONS (Top 10):
+${Object.entries(dataContext.locationCounts || {})
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 10)
+  .map(([name, count]) => `- ${name}: ${count} employees`)
+  .join('\n') || 'No location data available'}
+
+EMPLOYEE STATUS:
+${Object.entries(dataContext.statusCounts || {})
+  .map(([status, count]) => `- ${status}: ${count} employees`)
+  .join('\n') || 'No status data available'}
+
+KEY METRICS:
+- Average Salary: €${dataContext.totalEmployees > 0 ? Math.round(dataContext.totalSalary / dataContext.totalEmployees).toLocaleString() : 'N/A'} per employee
+- Average FTE: ${dataContext.totalEmployees > 0 ? (dataContext.totalFTE / dataContext.totalEmployees * 100).toFixed(1) : 'N/A'}%
+- Reduction Rate: ${dataContext.totalEmployees > 0 ? ((dataContext.employeesWithReduction / dataContext.totalEmployees) * 100).toFixed(1) : 0}%
+
+=== END OF DATA ===
+
+Use this data to answer user questions accurately. When users ask about specific departments, costs, or metrics, refer to the actual numbers above.`;
+
+  return BASE_SYSTEM_PROMPT + dataSection;
+}
 
 /**
  * Send a message to Azure OpenAI and get a response
@@ -37,12 +100,16 @@ export async function sendMessage(messages, options = {}) {
     temperature = 0.7,
     maxTokens = 1024,
     stream = false,
+    dataContext = null,
   } = options;
+
+  // Generate system prompt with data context
+  const systemPrompt = generateSystemPrompt(dataContext);
 
   // Prepend system message if not already present
   const messagesWithSystem = messages[0]?.role === 'system'
     ? messages
-    : [{ role: 'system', content: SYSTEM_PROMPT }, ...messages];
+    : [{ role: 'system', content: systemPrompt }, ...messages];
 
   try {
     const response = await fetch(AZURE_ENDPOINT, {
@@ -89,11 +156,15 @@ export async function sendMessageStream(messages, onChunk, options = {}) {
   const {
     temperature = 0.7,
     maxTokens = 1024,
+    dataContext = null,
   } = options;
+
+  // Generate system prompt with data context
+  const systemPrompt = generateSystemPrompt(dataContext);
 
   const messagesWithSystem = messages[0]?.role === 'system'
     ? messages
-    : [{ role: 'system', content: SYSTEM_PROMPT }, ...messages];
+    : [{ role: 'system', content: systemPrompt }, ...messages];
 
   try {
     const response = await fetch(AZURE_ENDPOINT, {
@@ -153,18 +224,26 @@ export async function sendMessageStream(messages, onChunk, options = {}) {
 }
 
 /**
- * Create a chat session with history management
+ * Create a chat session with history management and data context
  */
 export class ChatSession {
-  constructor() {
+  constructor(dataContext = null) {
     this.messages = [];
+    this.dataContext = dataContext;
+  }
+
+  setDataContext(dataContext) {
+    this.dataContext = dataContext;
   }
 
   async send(userMessage, options = {}) {
     this.messages.push({ role: 'user', content: userMessage });
 
     try {
-      const response = await sendMessage(this.messages, options);
+      const response = await sendMessage(this.messages, {
+        ...options,
+        dataContext: this.dataContext,
+      });
       this.messages.push({ role: 'assistant', content: response });
       return response;
     } catch (error) {
@@ -178,7 +257,10 @@ export class ChatSession {
     this.messages.push({ role: 'user', content: userMessage });
 
     try {
-      const response = await sendMessageStream(this.messages, onChunk, options);
+      const response = await sendMessageStream(this.messages, onChunk, {
+        ...options,
+        dataContext: this.dataContext,
+      });
       this.messages.push({ role: 'assistant', content: response });
       return response;
     } catch (error) {
@@ -200,4 +282,5 @@ export default {
   sendMessage,
   sendMessageStream,
   ChatSession,
+  generateSystemPrompt,
 };

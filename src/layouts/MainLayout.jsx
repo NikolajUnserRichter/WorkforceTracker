@@ -3,12 +3,15 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     Moon, Sun, LayoutDashboard, Users, Briefcase,
     Upload, FileText, LogOut, UserCog, TrendingDown,
-    Menu, X, Settings, Database, ChevronLeft, Bell, MessageSquare
+    Menu, X, Settings, Database, ChevronLeft, Bell, MessageSquare, BarChart3, Calculator, Gauge, Wallet, GitCompare
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Toaster } from 'react-hot-toast';
 import { ImportProvider } from '../contexts/ImportContext';
 import ImportWizard from '../components/import/ImportWizard';
+import GlobalSearch from '../components/GlobalSearch';
+import { ShortcutsProvider, ShortcutsHelpButton } from '../components/KeyboardShortcuts';
+import OnboardingTour from '../components/OnboardingTour';
 import toast from 'react-hot-toast';
 
 const MainLayout = ({ currentUser, onLogout }) => {
@@ -30,6 +33,11 @@ const MainLayout = ({ currentUser, onLogout }) => {
         { id: '/', label: 'Dashboard', icon: LayoutDashboard },
         { id: '/employees', label: 'Employees', icon: Users },
         { id: '/projects', label: 'Projects', icon: Briefcase },
+        { id: '/analytics', label: 'Analytics', icon: BarChart3 },
+        { id: '/simulation', label: 'Simulation', icon: Calculator },
+        { id: '/capacity', label: 'Kapazität', icon: Gauge },
+        { id: '/budget', label: 'Budget', icon: Wallet },
+        { id: '/data-comparison', label: 'Vergleich', icon: GitCompare },
         { id: '/comparison', label: 'Cost Tracking', icon: TrendingDown },
         { id: '/reports', label: 'Reports', icon: FileText },
         { id: '/chat', label: 'AI Assistant', icon: MessageSquare },
@@ -75,6 +83,10 @@ const MainLayout = ({ currentUser, onLogout }) => {
     };
 
     return (
+        <ShortcutsProvider
+            onImport={() => setShowImportWizard(true)}
+            onToggleTheme={toggleDarkMode}
+        >
         <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
             <Toaster
                 position="top-right"
@@ -227,8 +239,16 @@ const MainLayout = ({ currentUser, onLogout }) => {
                         </h2>
                     </div>
 
+                    {/* Global Search */}
+                    <div className="hidden md:block">
+                        <GlobalSearch onImport={() => setShowImportWizard(true)} />
+                    </div>
+
                     {/* Header Actions */}
                     <div className="flex items-center gap-2">
+                        {/* Shortcuts Help */}
+                        <ShortcutsHelpButton />
+
                         {/* Theme Toggle */}
                         <button
                             onClick={toggleDarkMode}
@@ -354,7 +374,11 @@ const MainLayout = ({ currentUser, onLogout }) => {
                     <ImportWizard onClose={() => setShowImportWizard(false)} />
                 </ImportProvider>
             )}
+
+            {/* Onboarding Tour */}
+            <OnboardingTour />
         </div>
+        </ShortcutsProvider>
     );
 };
 

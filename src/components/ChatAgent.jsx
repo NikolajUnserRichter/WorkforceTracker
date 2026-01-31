@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Trash2, AlertCircle } from 'lucide-react';
+import { Send, Bot, User, Loader2, Trash2, AlertCircle, Database, RefreshCw } from 'lucide-react';
 import { ChatSession } from '../services/chatService';
+import { employeeDB } from '../services/db';
 import ReactMarkdown from 'react-markdown';
 
 const ChatAgent = () => {
@@ -9,10 +10,40 @@ const ChatAgent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [dataContext, setDataContext] = useState(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  const chatSessionRef = useRef(new ChatSession());
+  const chatSessionRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Load workforce data on mount
+  useEffect(() => {
+    loadWorkforceData();
+  }, []);
+
+  const loadWorkforceData = async () => {
+    setDataLoading(true);
+    try {
+      const stats = await employeeDB.getStats();
+      setDataContext(stats);
+
+      // Create or update chat session with data context
+      if (!chatSessionRef.current) {
+        chatSessionRef.current = new ChatSession(stats);
+      } else {
+        chatSessionRef.current.setDataContext(stats);
+      }
+    } catch (err) {
+      console.error('Failed to load workforce data:', err);
+      // Create session without data context
+      if (!chatSessionRef.current) {
+        chatSessionRef.current = new ChatSession();
+      }
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -73,7 +104,7 @@ const ChatAgent = () => {
     setMessages([]);
     setStreamingMessage('');
     setError(null);
-    chatSessionRef.current.clearHistory();
+    chatSessionRef.current?.clearHistory();
     inputRef.current?.focus();
   }, []);
 
@@ -84,7 +115,14 @@ const ChatAgent = () => {
     }
   }, [handleSubmit]);
 
-  const suggestedQuestions = [
+  // Dynamic suggested questions based on data
+  const suggestedQuestions = dataContext?.totalEmployees > 0 ? [
+    "Wie viele Mitarbeiter haben wir insgesamt?",
+    "Welche Abteilung hat die meisten Mitarbeiter?",
+    "Wie hoch sind die Gesamtpersonalkosten?",
+    "Zeige mir die Verteilung nach Standorten",
+    "Wie viele Mitarbeiter sind in Reduktionsprogrammen?",
+  ] : [
     "How do I import employee data?",
     "What reports are available?",
     "How can I track workforce costs?",
@@ -105,19 +143,59 @@ const ChatAgent = () => {
             </span>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Ask questions about the Workforce Tracker
+            Fragen Sie nach Ihren Workforce-Daten
           </p>
         </div>
-        {messages.length > 0 && (
+        <div className="flex items-center gap-2">
+          {/* Data Status Indicator */}
+          <div className={`
+            flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
+            ${dataContext?.totalEmployees > 0
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+            }
+          `}>
+            <Database className="w-3.5 h-3.5" />
+            {dataLoading ? (
+              <span>Lade Daten...</span>
+            ) : dataContext?.totalEmployees > 0 ? (
+              <span>{dataContext.totalEmployees.toLocaleString()} Datensätze</span>
+            ) : (
+              <span>Keine Daten</span>
+            )}
+          </div>
+
+          {/* Refresh Data Button */}
           <button
-            onClick={handleClearChat}
-            className="btn btn-ghost btn-sm text-gray-500 hover:text-warning"
+            onClick={loadWorkforceData}
+            disabled={dataLoading}
+            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-p3-electric transition-colors disabled:opacity-50"
+            title="Daten aktualisieren"
           >
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Clear Chat</span>
+            <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
           </button>
-        )}
+
+          {messages.length > 0 && (
+            <button
+              onClick={handleClearChat}
+              className="btn btn-ghost btn-sm text-gray-500 hover:text-warning"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Clear Chat</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Data Context Info */}
+      {dataContext?.totalEmployees > 0 && messages.length === 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-xs text-blue-700 dark:text-blue-300">
+            <strong>Daten geladen:</strong> {dataContext.totalEmployees.toLocaleString()} Mitarbeiter, {Object.keys(dataContext.departmentDetails || {}).length} Abteilungen, {Object.keys(dataContext.locationCounts || {}).length} Standorte.
+            Der AI Assistant kann jetzt Fragen zu Ihren Daten beantworten.
+          </p>
+        </div>
+      )}
 
       {/* Chat Container */}
       <div className="flex-1 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col">
@@ -130,10 +208,16 @@ const ChatAgent = () => {
                 <Bot className="w-8 h-8 text-p3-electric" />
               </div>
               <h3 className="text-lg font-semibold text-p3-midnight dark:text-white mb-2">
-                Welcome to the AI Assistant
+                {dataContext?.totalEmployees > 0
+                  ? 'Fragen Sie mich zu Ihren Daten'
+                  : 'Willkommen beim AI Assistant'
+                }
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                I can help you navigate the Workforce Tracker, explain features, and answer questions about workforce management.
+                {dataContext?.totalEmployees > 0
+                  ? 'Ich habe Zugriff auf Ihre Workforce-Daten und kann Fragen zu Mitarbeitern, Abteilungen, Kosten und mehr beantworten.'
+                  : 'Importieren Sie zunächst Ihre HR-Daten, um datenbasierte Fragen stellen zu können. Ich kann Ihnen auch bei der Navigation und den Features helfen.'
+                }
               </p>
 
               {/* Suggested Questions */}
@@ -201,7 +285,10 @@ const ChatAgent = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask a question..."
+                placeholder={dataContext?.totalEmployees > 0
+                  ? "Fragen Sie nach Mitarbeitern, Abteilungen, Kosten..."
+                  : "Ask a question..."
+                }
                 rows={1}
                 disabled={isLoading}
                 className="w-full px-4 py-2.5 pr-12 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-p3-midnight dark:text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-p3-electric/50 focus:border-p3-electric disabled:opacity-50 disabled:cursor-not-allowed"
@@ -221,7 +308,7 @@ const ChatAgent = () => {
             </button>
           </form>
           <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 text-center">
-            Press Enter to send, Shift+Enter for new line
+            Enter zum Senden, Shift+Enter für neue Zeile
           </p>
         </div>
       </div>

@@ -296,10 +296,15 @@ export const employeeDB = {
 
     // Distributions
     const departmentCounts = {};
+    const departmentDetails = {}; // Extended with FTE and salary per department
     const statusCounts = {};
     const roleCounts = {};
+    const costCenterCounts = {};
+    const locationCounts = {};
     let totalFTE = 0;
+    let totalSalary = 0;
     let reductionImpactSum = 0;
+    let employeesWithReduction = 0;
 
     // Use cursor to iterate without keeping all objects in memory
     while (cursor) {
@@ -310,9 +315,14 @@ export const employeeDB = {
       const fte = emp.fte || 100;
       totalFTE += fte;
 
+      // Salary (baseSalary or salary field)
+      const salary = parseFloat(emp.baseSalary) || parseFloat(emp.salary) || 0;
+      totalSalary += salary;
+
       // Reduction
       const reduction = emp.reductionProgram?.reductionPercentage || 0;
       reductionImpactSum += reduction;
+      if (reduction > 0) employeesWithReduction++;
       totalCapacity += (fte * (1 - reduction / 100));
 
       // Availability calculation
@@ -320,15 +330,36 @@ export const employeeDB = {
         availableEmployees++;
       }
 
-      // Breakdown counts
+      // Department breakdown with extended details
       const dept = emp.department || 'Unknown';
       departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
+      if (!departmentDetails[dept]) {
+        departmentDetails[dept] = { count: 0, totalFTE: 0, totalSalary: 0, reductionCount: 0 };
+      }
+      departmentDetails[dept].count += 1;
+      departmentDetails[dept].totalFTE += fte;
+      departmentDetails[dept].totalSalary += salary;
+      if (reduction > 0) departmentDetails[dept].reductionCount += 1;
 
+      // Status counts
       const status = emp.status || 'unknown';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
 
+      // Role counts
       const role = emp.role || 'Unknown';
       roleCounts[role] = (roleCounts[role] || 0) + 1;
+
+      // Cost center counts
+      const costCenter = emp.costCenter || emp.cost_center || null;
+      if (costCenter) {
+        costCenterCounts[costCenter] = (costCenterCounts[costCenter] || 0) + 1;
+      }
+
+      // Location counts
+      const location = emp.plant || emp.location || emp.city || null;
+      if (location) {
+        locationCounts[location] = (locationCounts[location] || 0) + 1;
+      }
 
       cursor = await cursor.continue();
     }
@@ -338,10 +369,15 @@ export const employeeDB = {
       totalCapacity,
       availableEmployees,
       departmentCounts,
+      departmentDetails,
       statusCounts,
       roleCounts,
+      costCenterCounts,
+      locationCounts,
       totalFTE,
-      reductionImpactSum
+      totalSalary,
+      reductionImpactSum,
+      employeesWithReduction
     };
   },
 
@@ -513,6 +549,26 @@ export const importHistoryDB = {
     return db.add('importHistory', history);
   },
 
+  // Add import with snapshot statistics (GDPR-compliant aggregated data only)
+  async addWithSnapshot(history, stats) {
+    const db = await initDB();
+    const enrichedHistory = {
+      ...history,
+      snapshot: {
+        totalEmployees: stats.totalEmployees || 0,
+        totalFTE: stats.totalFTE || 0,
+        totalSalary: stats.totalSalary || 0,
+        departmentCounts: stats.departmentCounts || {},
+        departmentDetails: stats.departmentDetails || {},
+        statusCounts: stats.statusCounts || {},
+        costCenterCounts: stats.costCenterCounts || {},
+        locationCounts: stats.locationCounts || {},
+        employeesWithReduction: stats.employeesWithReduction || 0
+      }
+    };
+    return db.add('importHistory', enrichedHistory);
+  },
+
   async getAll() {
     const db = await initDB();
     const tx = db.transaction('importHistory', 'readonly');
@@ -534,6 +590,17 @@ export const importHistoryDB = {
     }
 
     return results;
+  },
+
+  async get(id) {
+    const db = await initDB();
+    return db.get('importHistory', id);
+  },
+
+  // Get imports with snapshots for comparison
+  async getWithSnapshots(limit = 10) {
+    const all = await this.getRecent(limit);
+    return all.filter(h => h.snapshot);
   },
 
   async delete(id) {

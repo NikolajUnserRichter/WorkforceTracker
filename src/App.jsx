@@ -1,19 +1,39 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 import MainLayout from './layouts/MainLayout';
+
+// Eagerly loaded components (critical path)
 import Dashboard from './components/Dashboard';
-import EmployeeList from './components/EmployeeList';
-import Projects from './components/Projects';
-import Reports from './components/Reports';
 import Login from './components/Login';
-import UserManagement from './components/UserManagement';
-import WorkforceComparison from './components/WorkforceComparison';
-import AdminSettings from './components/AdminSettings';
-import UploadManagement from './components/UploadManagement';
-import ChatAgent from './components/ChatAgent';
+
+// Lazy loaded components (code-split)
+const EmployeeList = lazy(() => import('./components/EmployeeList'));
+const Projects = lazy(() => import('./components/Projects'));
+const Reports = lazy(() => import('./components/Reports'));
+const UserManagement = lazy(() => import('./components/UserManagement'));
+const WorkforceComparison = lazy(() => import('./components/WorkforceComparison'));
+const AdminSettings = lazy(() => import('./components/AdminSettings'));
+const UploadManagement = lazy(() => import('./components/UploadManagement'));
+const ChatAgent = lazy(() => import('./components/ChatAgent'));
+const DepartmentAnalytics = lazy(() => import('./components/DepartmentAnalytics'));
+const ScenarioSimulation = lazy(() => import('./components/ScenarioSimulation'));
+const CapacityPlanning = lazy(() => import('./components/CapacityPlanning'));
+const BudgetForecast = lazy(() => import('./components/BudgetForecast'));
+const DataComparison = lazy(() => import('./components/DataComparison'));
+
+/**
+ * Loading Spinner for Suspense fallback
+ */
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-p3-electric border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 /**
  * Private Route Wrapper
@@ -89,62 +109,69 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      {/* Public route - Login */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-
-      {/* Protected routes - wrapped in MainLayout */}
-      <Route
-        element={
-          <PrivateRoute>
-            <MainLayout currentUser={user} onLogout={logout} />
-          </PrivateRoute>
-        }
-      >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/employees" element={<EmployeeList />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/comparison" element={<WorkforceComparison />} />
-        <Route path="/chat" element={<ChatAgent />} />
-
-        {/* Admin-only routes */}
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        {/* Public route - Login */}
         <Route
-          path="/users"
+          path="/login"
           element={
-            <AdminRoute>
-              <UserManagement />
-            </AdminRoute>
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
           }
         />
-        <Route
-          path="/uploads"
-          element={
-            <AdminRoute>
-              <UploadManagement />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <AdminRoute>
-              <AdminSettings />
-            </AdminRoute>
-          }
-        />
-      </Route>
 
-      {/* Catch-all redirect */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Protected routes - wrapped in MainLayout */}
+        <Route
+          element={
+            <PrivateRoute>
+              <MainLayout currentUser={user} onLogout={logout} />
+            </PrivateRoute>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/employees" element={<EmployeeList />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/comparison" element={<WorkforceComparison />} />
+          <Route path="/analytics" element={<DepartmentAnalytics />} />
+          <Route path="/simulation" element={<ScenarioSimulation />} />
+          <Route path="/capacity" element={<CapacityPlanning />} />
+          <Route path="/budget" element={<BudgetForecast />} />
+          <Route path="/data-comparison" element={<DataComparison />} />
+          <Route path="/chat" element={<ChatAgent />} />
+
+          {/* Admin-only routes */}
+          <Route
+            path="/users"
+            element={
+              <AdminRoute>
+                <UserManagement />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/uploads"
+            element={
+              <AdminRoute>
+                <UploadManagement />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <AdminRoute>
+                <AdminSettings />
+              </AdminRoute>
+            }
+          />
+        </Route>
+
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

@@ -9,7 +9,8 @@ import {
   employeeDB,
   projectDB,
   reductionProgramDB,
-  assignmentDB
+  assignmentDB,
+  importHistoryDB
 } from '../services/unifiedDB';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
@@ -235,16 +236,14 @@ export const AppProvider = ({ children, currentUser }) => {
   // --- Metrics & Dashboard ---
 
   const getDashboardMetrics = useCallback(async () => {
-    const [empStats, assignStats] = await Promise.all([
+    const [empStats, assignStats, recentImports] = await Promise.all([
       employeeDB.getStats(),
-      assignmentDB.getStats()
+      assignmentDB.getStats(),
+      importHistoryDB.getRecent(1).catch(() => [])
     ]);
 
     const activeProjects = projects.filter(p => p.status === 'active').length;
     const activeReductions = reductionPrograms.filter(p => p.status === 'active').length;
-
-    // Check if empStats returned the full detailed object or just the basic one
-    // We assume the DB service is updated to return detailed stats
 
     const totalAllocated = assignStats.totalAllocated;
 
@@ -253,7 +252,19 @@ export const AppProvider = ({ children, currentUser }) => {
       : 0;
 
     const avgFTE = empStats.totalEmployees > 0 ? (empStats.totalFTE / empStats.totalEmployees) : 0;
-    const avgReductionInpact = empStats.totalEmployees > 0 ? (empStats.reductionImpactSum / empStats.totalEmployees) : 0;
+    const avgReductionImpact = empStats.totalEmployees > 0 ? (empStats.reductionImpactSum / empStats.totalEmployees) : 0;
+
+    // Get last import info
+    const lastImport = recentImports[0] || null;
+    const lastImportTime = lastImport?.timestamp || lastImport?.created_at || null;
+
+    // Calculate department count
+    const departmentCount = Object.keys(empStats.departmentCounts || {}).length;
+
+    // Calculate potential cost reduction (employees with active reduction programs)
+    const potentialReduction = empStats.employeesWithReduction > 0 && empStats.totalSalary > 0
+      ? (empStats.reductionImpactSum / empStats.totalEmployees) * empStats.totalSalary / 100
+      : 0;
 
     return {
       totalEmployees: empStats.totalEmployees,
@@ -262,13 +273,29 @@ export const AppProvider = ({ children, currentUser }) => {
       availableEmployees: empStats.availableEmployees,
       activeReductions,
 
-      // Detailed stats for Reports
+      // Financial metrics
+      totalSalary: empStats.totalSalary || 0,
+      potentialReduction: Math.round(potentialReduction),
+
+      // Detailed stats
       departmentCounts: empStats.departmentCounts || {},
+      departmentDetails: empStats.departmentDetails || {},
       statusCounts: empStats.statusCounts || {},
       roleCounts: empStats.roleCounts || {},
+      costCenterCounts: empStats.costCenterCounts || {},
+      locationCounts: empStats.locationCounts || {},
+
+      // FTE metrics
       totalFTE: Math.round((empStats.totalFTE || 0) * 10) / 10,
       avgFTE: Math.round(avgFTE * 10) / 10,
-      reductionImpact: Math.round(avgReductionInpact * 10) / 10,
+
+      // Reduction metrics
+      reductionImpact: Math.round(avgReductionImpact * 10) / 10,
+      employeesWithReduction: empStats.employeesWithReduction || 0,
+
+      // Meta
+      departmentCount,
+      lastImportTime,
     };
   }, [projects, reductionPrograms]);
 
