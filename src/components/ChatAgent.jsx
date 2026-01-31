@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Loader2, Trash2, AlertCircle, Database, RefreshCw } from 'lucide-react';
 import { ChatSession } from '../services/chatService';
-import { employeeDB } from '../services/db';
+import { employeeDB } from '../services/unifiedDB';
 import ReactMarkdown from 'react-markdown';
 
 const ChatAgent = () => {
